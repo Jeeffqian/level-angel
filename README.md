@@ -18,8 +18,11 @@
 ## 关卡
 12 关：基础移动 → 时空洞 → 追逐 → 反出口 → 攀升 → 移动平台 → 消失平台 → 传送门 → 重力反转 → 双移动平台 → 反向控制 → 冰面。
 
+## 游戏
+- `level-devil-game.html` — LEVEL ANGEL 主游戏
+- `europe-map.html` — 欧罗巴地图策略（2~3 人 P2P 联机）
+- `peerjs.min.js` — P2P 联机库
+
 ## 文件
 - `index.html` — 游戏合集首页
-- `level-devil-game.html` — 主游戏
-- `peerjs.min.js` — P2P 联机库
 - `百数表.html` 等 — 其他小游戏

@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欧陆争霸 · 地图原型</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a1120;
+    min-height: 100vh;
+    font-family: Arial, 'Helvetica Neue', sans-serif;
+    color: #c9d6e8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+  }
+  header { text-align: center; margin-bottom: 12px; }
+  h1 { font-size: 26px; color: #ffd166; letter-spacing: 4px; text-shadow: 0 0 18px #ffd16644; }
+  .sub { font-size: 13px; color: #7d90aa; margin-top: 4px; }
+  .legend { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+  .lg { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ffffff22; background: #ffffff0a; color: #bcd; }
+  .lg.tur { border-color:#ff9f0a88; color:#ffc76b; }
+  .lg.ger { border-color:#17bddd88; color:#7fe3f7; }
+  .lg.bri { border-color:#4d7cff88; color:#a8c2ff; }
+  .wrap { display: flex; gap: 16px; align-items: stretch; justify-content: center; width: 100%; max-width: 1400px; }
+  .mapbox {
+    position: relative; flex: 1; min-width: 0;
+    aspect-ratio: 16 / 10;
+    max-height: 80vh;
+    background: #0a1428;
+    border: 1px solid #ffd16633;
+    border-radius: 14px;
+    box-shadow: 0 10px 40px #00000055, 0 0 40px #ffd16611;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  svg { display: block; width: 140%; height: auto; }
+  .scrollnote { margin-top: 10px; text-align: center; font-size: 12px; color: #66798f; letter-spacing: 2px; }
+  .cst { stroke: #0a1428; stroke-width: 0.03; transition: filter .15s, stroke .15s; cursor: pointer; }
+  .cst:hover { filter: brightness(1.4); }
+  .cst.sel { stroke: #ffd166; stroke-width: 0.05; filter: brightness(1.55) drop-shadow(0 0 0.12 rgba(255,209,102,.95)); }
+  .cst.main { filter: drop-shadow(0 0 0.07 rgba(255,255,255,.35)); }
+  .cname {
+    font-size: 0.30px; fill: #dbe6f5; pointer-events: none;
+    text-anchor: middle; font-weight: 700;
+    paint-order: stroke; stroke:#081120; stroke-width:0.05; stroke-linejoin: round;
+  }
+  .cname.main { font-size: 0.36px; fill: #fff; }
+  .panel {
+    width: 300px; flex-shrink: 0;
+    background: #0d1728;
+    border: 1px solid #ffd16633;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 10px 40px #00000055;
+    overflow: auto;
+  }
+  .panel h2 { font-size: 20px; color: #fff; margin-bottom: 2px; }
+  .p-tag { font-size: 12px; margin-bottom: 12px; }
+  .t-main { color: #ffd166; }
+  .t-vass { color: #8fb3c9; }
+  .stats { margin: 10px 0; }
+  .stat { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .stat .lab { width: 40px; color: #9fb2cc; }
+  .stat .bar { flex: 1; height: 10px; background: #1c2a42; border-radius: 6px; overflow: hidden; }
+  .stat .bar i { display: block; height: 100%; border-radius: 6px; }
+  .stat .num { width: 30px; text-align: right; color: #fff; }
+  .bar.gold i { background: linear-gradient(90deg,#b97a00,#ffd166); }
+  .bar.cyan i { background: linear-gradient(90deg,#0d7d9c,#7fe3f7); }
+  .bar.blue i { background: linear-gradient(90deg,#2440c9,#a8c2ff); }
+  .res { margin-top: 12px; padding: 10px 12px; background: #ffd16612; border: 1px solid #ffd16633; border-radius: 10px; font-size: 13px; }
+  .res b { color: #ffd166; }
+  .desc { margin-top: 12px; font-size: 13px; color: #93a7c2; line-height: 1.7; }
+  .hint { font-size: 12px; color: #66798f; line-height: 1.8; }
+  .hint .dot { color: #ffd166; }
+  .chips { margin-top: 16px; width: 100%; max-width: 1400px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid #ffffff26; background: #ffffff0c; color: #bcd; cursor: pointer; transition: all .15s; user-select: none; }
+  .chip:hover { border-color: #ffd16688; color: #ffd166; }
+  .chip.sel { background: #ffd16622; border-color: #ffd166; color: #ffd166; }
+  .chip.div { border: none; background: none; color: #5c7088; font-size: 11px; letter-spacing: 2px; cursor: default; }
+  .overlay { position: fixed; inset: 0; background: rgba(5,10,20,.82); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .overlay.hidden { display: none; }
+  .hidden { display: none !important; }
+  .card { background:#0d1728; border:1px solid #ffd16644; border-radius:16px; padding:22px 24px; max-width:420px; width:100%; box-shadow:0 20px 70px #00000077; text-align:center; }
+  .card.shop.wide { max-width:1140px; width:96vw; height:86vh; display:flex; flex-direction:column; padding:18px 22px; }
+  .shopfx { display:flex; align-items:center; gap:12px; }
+  .shoptabs { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; padding:8px 0 12px; border-bottom:1px solid #ffffff1a; margin-bottom:12px; }
+  .tab { background:#ffffff0a; color:#93a7c2; border:1px solid #ffffff1f; border-radius:999px; padding:6px 14px; font-size:12px; cursor:pointer; }
+  .tab:hover { border-color:#ffd16688; }
+  .tab.sel { background:linear-gradient(135deg,#ffd166,#ff9e5e); color:#1a0a00; font-weight:800; border:none; }
+  .tab.mine { border-color:#ffd16666; color:#ffd166; }
+  .shopview { flex:1; min-height:0; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; align-content:start; }
+  .good { display:flex; align-items:center; gap:14px; text-align:left; background:#ffffff0a; border:1px solid #ffffff1f; border-radius:12px; padding:14px; }
+  .section-tag { font-size: 12px; color:#8fb3c9; letter-spacing:2px; margin: 14px 0 8px; text-align:left; border-bottom:1px solid #ffffff1f; padding-bottom:4px; }
+  .card h2 { color:#ffd166; letter-spacing:3px; margin-bottom:6px; }
+  .card p { color:#93a7c2; font-size:13px; margin-bottom:18px; }
+  .choices { display:flex; gap:12px; justify-content:center; }
+  .pick { flex:1; padding:14px 0; border-radius:12px; border:2px solid; background:#0a1428; font-size:16px; font-weight:800; letter-spacing:2px; cursor:pointer; transition: all .15s; }
+  .pick:hover { transform: translateY(-2px); filter: brightness(1.25); }
+  .pick.tur { color:#ffc76b; border-color:#ff9f0a; }
+  .pick.ger { color:#7fe3f7; border-color:#17bddd; }
+  .pick.bri { color:#a8c2ff; border-color:#4d7cff; }
+  .mapholder { position: relative; flex: 1; min-width: 0; display: flex; }
+  .hud {
+    position: absolute; top: 12px; right: 12px; z-index: 12; display: flex; align-items: center; gap: 10px; background: rgba(13,23,40,.92); border: 1px solid #ffd16644; border-radius: 12px; padding: 8px 14px; box-shadow: 0 8px 24px #00000066; font-size: 14px;
+  }
+  .hud .turn { color:#7fe3f7; font-weight:800; font-size:14px; }
+  .hud .timer { color:#ffd166; font-weight:800; font-size:16px; min-width:44px; text-align:right; }
+  .hud .timer.urgent { color:#ff6b6b; animation: pulse .5s infinite alternate; }
+  @keyframes pulse { from { opacity:.5 } to { opacity:1 } }
+  .endturn { background: linear-gradient(135deg,#7fe3f7,#4d7cff); color:#04101f; border:none; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer; }
+  .endturn:hover { filter: brightness(1.12); }
+  .duoinfo { position:absolute; left:12px; bottom:52px; z-index:12; display:flex; flex-direction:column; gap:6px; font-size:12px; }
+  .duoinfo .pl { display:flex; align-items:center; gap:8px; background:rgba(13,23,40,.9); border:1px solid #ffffff22; border-radius:10px; padding:6px 10px; }
+  .duoinfo .pl.act { border-color:#ffd166; box-shadow:0 0 12px #ffd16644; }
+  .duoinfo .dotc { width:10px; height:10px; border-radius:50%; }
+  .duoinfo .dead { opacity:.45; text-decoration: line-through; }
+  .modecard h1.big { font-size: 44px; color:#ffd166; letter-spacing: 10px; text-shadow: 0 0 26px #ffd16655; margin-bottom: 6px; }
+  .modepick { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
+  .modebtn { flex:1 1 160px; min-width:150px; padding:18px 10px; border-radius:14px; border:2px solid #ffd16688; background:#0a1428; color:#ffd166; font-size:20px; font-weight:800; letter-spacing:4px; cursor:pointer; transition:all .15s; }
+  .modebtn:hover { transform:translateY(-3px); filter:brightness(1.2); }
+  .modebtn small { display:block; font-size:12px; letter-spacing:1px; color:#93a7c2; font-weight:400; margin-top:6px; }
+  .pick.dis { opacity:.28; cursor:not-allowed; filter:grayscale(1); }
+  .pick.dis:hover { transform:none; filter:grayscale(1); }
+  .pickbtn { flex:1; padding:14px 0; border-radius:12px; border:2px solid #4d7cff; background:#0a1428;
+    color:#a8c2ff; font-size:16px; font-weight:800; letter-spacing:2px; cursor:pointer; transition:all .15s; }
+  .pickbtn:hover { transform:translateY(-2px); filter:brightness(1.25); }
+  .pickbtn.ghost { background:transparent; color:#93a7c2; border-color:#93a7c255; }
+  .backrow { margin-top:14px; }
+  .setrow { display:flex; align-items:center; gap:12px; justify-content:center; margin:14px 0; flex-wrap:wrap; }
+  .setlabel { font-size:14px; letter-spacing:2px; color:#93a7c2; min-width:66px; text-align:right; }
+  .seg { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .seg button { padding:9px 15px; border-radius:10px; border:2px solid #ffd16655; background:#0a1428; color:#cfe0f5; font-size:15px; font-weight:700; letter-spacing:1px; cursor:pointer; }
+  .seg button.on { border-color:#ffd166; color:#0a1428; background:#ffd166; }
+  .ainote { font-size:13px; color:#93a7c2; letter-spacing:1px; min-height:18px; margin:6px 0 2px; }
+  .aitag { font-style:normal; font-size:11px; letter-spacing:1px; color:#0a1428; background:#93a7c2; border-radius:6px; padding:1px 5px; margin-left:4px; }
+  .pick.ghost { background:transparent; color:#93a7c2; border-color:#93a7c255; }
+  .txtin { background:#0a1428; border:2px solid #ffd16655; border-radius:10px; color:#e8f0ff; font-size:15px; padding:9px 12px; letter-spacing:1px; min-width:150px; }
+  .txtin:focus { outline:none; border-color:#ffd166; }
+  #onSeats { display:flex; flex-direction:column; gap:8px; margin:6px 0 14px; }
+  .onseat { text-align:left; background:#0a1428; border:1px solid #ffffff22; border-radius:10px; padding:9px 13px; font-size:15px; color:#93a7c2; letter-spacing:1px; }
+  .onseat.on { color:#e8f0ff; border-color:#ffd16666; }
+  .onseat b { margin-right:8px; }
+  .winner { font-size: 30px; font-weight:800; letter-spacing:4px; margin-bottom:8px; }
+  .winner .p1c { color:#ffc76b; }
+  .winner .p2c { color:#7fe3f7; }
+  .endstats { font-size: 14px; color:#93a7c2; line-height:1.9; margin-bottom:18px; }
+  .trade-q { font-size:15px; color:#e8f0ff; line-height:1.95; }
+  .trade-q b { color:#ffd166; font-size:17px; }
+  .trade-q .nm { color:#7fe3f7; }
+  .trade-actions { display:flex; gap:10px; margin-bottom:10px; }
+  .trade-actions > * { flex:1; }
+  .trade-counter { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .trade-counter span:first-child { font-size:13px; color:#93a7c2; }
+  .trade-counter input { background:#0d1b36; border:1px solid #ffffff33; color:#ffd166; border-radius:8px; padding:8px 10px; width:120px; font-weight:700; font-size:15px; }
+  .trade-tip { font-size:12px; color:#93a7c2; flex:1; min-width:130px; }
+  .hud .money { color: #ffd166; font-weight: 800; font-size: 16px; }
+  .hud .day { color: #93a7c2; font-size: 12px; }
+  .goldbtn { background: linear-gradient(90deg,#b97a00,#ffd166); color:#1a1508; border:none; border-radius:10px; padding:8px 16px; font-weight:800; cursor:pointer; transition: filter .15s; }
+  .goldbtn:hover { filter: brightness(1.15); }
+  .goldbtn:disabled { filter: grayscale(.8); opacity:.5; cursor:not-allowed; }
+  .sndbtn { padding:8px 12px; font-size:15px; line-height:1; min-width:38px; }
+  .sndbtn.off { background:#22304a; color:#6b7a94; }
+  .shop-h { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .shop-h .money { color:#ffd166; font-weight:800; font-size:18px; }
+  .good { display:flex; align-items:center; gap:14px; text-align:left; background:#ffffff0a; border:1px solid #ffffff1f; border-radius:12px; padding:14px; }
+  .good.empty { justify-content:center; color:#93a7c2; font-size:13px; grid-column:1 / -1; }
+  .good + .good { margin-top: 10px; }
+  .section-tag { font-size: 12px; color:#8fb3c9; letter-spacing:2px; margin: 14px 0 8px; text-align:left; border-bottom:1px solid #ffffff1f; padding-bottom:4px; }
+  .g-icon { font-size:30px; }
+  .g-info { flex:1; }
+  .g-info b { display:block; color:#fff; font-size:16px; }
+  .g-info span { display:block; color:#93a7c2; font-size:12px; margin-top:2px; }
+  .g-info .fxline { color:#ffd166; font-size:12px; margin-top:4px; font-weight:800; }
+  .shop-foot { display:flex; align-items:center; justify-content:space-between; margin-top:16px; color:#93a7c2; font-size:13px; gap:12px; flex-wrap:wrap; }
+  .shop-bonus { color:#ffd166; font-size:12px; }
+  .shop-note { margin-top:12px; font-size:11px; color:#66798f; }
+  .closebtn { background:#1c2a42; color:#c9d6e8; border:1px solid #ffffff22; border-radius:10px; padding:8px 16px; cursor:pointer; }
+  .closebtn:hover { border-color:#ffd16688; }
+  .hud-left { position: absolute; top: 12px; left: 12px; z-index: 12; display: flex; align-items: center; gap: 10px; }
+  .deploy { width: 100%; max-width: 1250px; height: 90vh; display: flex; flex-direction: column; background:#0d1728; border:1px solid #ffd16644; border-radius:16px; padding:16px; box-shadow:0 20px 70px #00000077; }
+  .deploy-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .deploy-head h2 { color:#ffd166; letter-spacing:3px; }
+  .deploy-body { flex:1; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; min-height:0; }
+  .depmap { position:relative; min-height:380px; overflow:hidden; background:#0a1428; border:1px solid #ffffff1f; border-radius:12px; }
+  .depmap svg { position:absolute; inset:0; width:100%; height:100%; }
+  .depopts { display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:0; }
+  .depopt { display:flex; align-items:center; gap:10px; background:#ffffff0a; border:1px solid #ffffff1f; border-radius:10px; padding:10px; }
+  .depopt .o-icon { font-size:22px; }
+  .depopt .o-info { flex:1; min-width:0; }
+  .depopt .o-info b { display:block; color:#fff; font-size:14px; }
+  .depopt .o-info span { display:block; color:#93a7c2; font-size:11px; margin-top:2px; }
+  .dep-selected { font-size:12px; color:#ffd166; background:#ffffff08; border:1px solid #ffd16633; border-radius:8px; padding:8px 10px; text-align:left; }
+  .depfirebar { margin-top:auto; display:flex; align-items:center; gap:8px; }
+  .depnote { font-size:11px; color:#66798f; line-height:1.7; }
+  .firebtn { background:linear-gradient(135deg,#ffd166,#ff9e5e); color:#1a0a00; border:none; border-radius:10px; padding:10px 0; font-size:14px; font-weight:800; letter-spacing:2px; cursor:pointer; flex:1; }
+  .firebtn:hover { filter:brightness(1.08); }
+  .fireui { position:absolute; top:60px; left:50%; transform:translateX(-50%); z-index:14; display:flex; align-items:center; gap:10px; background:#0d1728; border:1px solid #ffd16688; color:#ffd166; border-radius:999px; padding:8px 16px; font-size:13px; white-space:nowrap; }
+  .opmoney { position:absolute; top:110px; left:50%; transform:translateX(-50%); z-index:14; display:flex; align-items:center; gap:8px; background:#0d1728; border:1px solid #ff6bc6; color:#ffb3e2; border-radius:10px; padding:8px 14px; font-size:13px; }
+  .opmoney input { width:110px; background:#101c30; color:#ffb3e2; border:1px solid #ff6bc644; border-radius:6px; padding:4px 8px; font-size:13px; }
+  .opmoney button { background:#ff6bc6; color:#12000a; border:none; border-radius:6px; padding:4px 10px; font-weight:800; cursor:pointer; }
+  .toast { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); z-index:15; background:#0d1728; border:1px solid #ffd16666; color:#ffe8b8; border-radius:10px; padding:10px 16px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:80%; }
+  .toast.show { opacity:1; }
+  @media (max-width: 900px) { .wrap { flex-direction: column; } .panel { width: 100%; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>欧陆争霸</h1>
+  <div class="sub">真实欧洲地图 · 三大主国 + 众多资源邦国</div>
+</header>
+
+<div class="legend">
+  <span class="lg tur"><b>土耳其</b>：陆军 S</span>
+  <span class="lg ger"><b>德国</b>：空军 S</span>
+  <span class="lg bri"><b>英国</b>：海军 S</span>
+  <span class="lg">浅色邦国：拥有不同资源</span>
+</div>
+
+<div class="wrap">
+  <div class="mapholder">
+    <div class="mapbox">
+      <svg id="map" viewBox="-3 -18 15.6 15" xmlns="http://www.w3.org/2000/svg">
+        <rect x="-3" y="-18" width="15.6" height="15" fill="#0a1428"/>
+        <g id="land"></g>
+        <g id="labs"></g>
+      </svg>
+    </div>
+    <div class="hud-left" id="hudLeft" style="display:none">
+      <button class="goldbtn" id="depBtn">部署</button>
+    </div>
+    <div class="fireui hidden" id="fireUI">
+      <span id="fireUITxt"></span>
+      <button class="closebtn" id="fireCancel">取消</button>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="opmoney hidden" id="opMoney">
+      <span>管理员模式</span>
+      <input type="number" id="opInput" value="2000">
+      <button id="opSet">设置金额</button>
+    </div>
+    <div class="hud">
+      <span class="turn hidden" id="turnTag">P1 回合</span>
+      <span class="timer hidden" id="turnTimer">30</span>
+      <span class="day" id="dayTag">第 1 天</span>
+      <span class="money" id="hudMoney">¥ 200</span>
+      <button class="endturn hidden" id="endTurn">结束回合</button>
+      <button class="goldbtn sndbtn" id="sndBtn" title="音效开关">♪</button>
+      <button class="goldbtn" id="shopBtn">= 商店</button>
+    </div>
+    <div class="duoinfo hidden" id="duoInfo"></div>
+  </div>
+
+  <div class="panel" id="panel">
+    <h2 id="p-name">欧陆争霸</h2>
+    <div class="p-tag" id="p-tag">地图原型</div>
+    <div class="stats" id="p-stats"></div>
+    <div class="res" id="p-res"></div>
+    <div class="desc" id="p-desc"></div>
+    <div class="hint" id="p-hint">
+      <span class="dot">●</span> 点击地图上的国家查看详情<br>
+      <span class="dot">●</span> 三大主国各有王牌兵种<br>
+      <span class="dot">●</span> 邦国提供不同资源
+    </div>
+  </div>
+</div>
+
+<div class="scrollnote">↔ 地图较大，横向滑动浏览 · 上下可滚动</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="overlay" id="modeOv">
+  <div class="card modecard">
+    <h1 class="big">地图游戏</h1>
+    <p>真实欧洲地图 · 三大主国 + 众多资源邦国</p>
+    <div class="modepick">
+      <button class="modebtn" id="btnSolo">单人模式<small>一人统领，30 秒 = 1 天</small></button>
+      <button class="modebtn" id="btnDuo">双人模式<small>P1 / P2 轮流回合</small></button>
+      <button class="modebtn" id="btnTrio">三人模式<small>P1 / P2 / P3 混战</small></button>
+      <button class="modebtn" id="btnAI">AI 填充模式<small>你 + 1~2 名 AI，难度 1-5</small></button>
+      <button class="modebtn" id="btnOnline">联机模式<small>创建房间 / 输入房间码，2~3 人异地对战</small></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="aiOv">
+  <div class="card">
+    <h2>AI 填充模式</h2>
+    <p>你担任 P1，AI 接管其余主国。1 名 AI 按双人规则对战，2 名 AI 按三人规则混战；AI 会购买商品、部署部队并进攻。</p>
+    <div class="setrow"><span class="setlabel">AI 数量</span>
+      <div class="seg" id="aiCountSeg">
+        <button data-n="1" class="on">1 名（双人）</button>
+        <button data-n="2">2 名（三人）</button>
+      </div>
+    </div>
+    <div class="setrow"><span class="setlabel">AI 难度</span>
+      <div class="seg" id="aiDiffSeg">
+        <button data-d="1">1</button><button data-d="2">2</button><button data-d="3" class="on">3</button><button data-d="4">4</button><button data-d="5">5</button>
+      </div>
+    </div>
+    <p class="ainote" id="aiDiffHint"></p>
+    <div class="choices">
+      <button class="pickbtn" id="aiStart">进入选国</button>
+      <button class="pickbtn ghost" id="aiBack">返回</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="onlineOv">
+  <div class="card">
+    <h2>联机对战</h2>
+    <div id="onSetup">
+      <p>点对点联机：一人创建房间，把房间码发给朋友，朋友输入房间码加入。</p>
+      <div class="setrow"><span class="setlabel">人数</span>
+        <div class="seg" id="onSizeSeg">
+          <button data-s="2" class="on">2 人</button>
+          <button data-s="3">3 人</button>
+        </div>
+      </div>
+      <div class="setrow"><span class="setlabel">你的名字</span>
+        <input id="onName" class="txtin" maxlength="12" placeholder="输入昵称" autocomplete="off">
+      </div>
+      <div class="setrow hidden" id="onCodeRow"><span class="setlabel">房间码</span>
+        <input id="onCode" class="txtin" maxlength="40" placeholder="房主给你的房间码" autocomplete="off">
+      </div>
+      <p class="ainote" id="onHint"></p>
+      <div class="choices">
+        <button class="pickbtn" id="onHost">创建房间</button>
+        <button class="pickbtn ghost" id="onViewJoin">加入房间</button>
+        <button class="pickbtn hidden" id="onJoin">确认加入</button>
+        <button class="pickbtn ghost" id="onBack">返回</button>
+      </div>
+    </div>
+    <div id="onLobby" class="hidden">
+      <p id="onStatus">正在连接…</p>
+      <div id="onSeats"></div>
+      <div class="choices">
+        <button class="pickbtn hidden" id="onStart">开始游戏</button>
+        <button class="pickbtn ghost" id="onLeave">离开房间</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="startOv">
+  <div class="card">
+    <h2 id="pickTitle">选择初始国</h2>
+    <p id="pickSub">三大主国，各有所长，随你统领</p>
+    <div class="choices">
+      <button class="pick tur" data-k="turkey">土耳其</button>
+      <button class="pick ger" data-k="germany">德国</button>
+      <button class="pick bri" data-k="uk">英国</button>
+    </div>
+    <div class="backrow hidden" id="pickBack"><button class="closebtn" id="pickBackBtn">返回</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOv">
+  <div class="card">
+    <h2 class="winner" id="winTitle">胜利</h2>
+    <div class="endstats" id="winStats"></div>
+    <div class="choices"><button class="pick" id="againBtn">再来一局</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="tradeOv">
+  <div class="card shop wide">
+    <div class="shop-h">
+      <h2>谈判</h2>
+      <div class="shopfx">
+        <span class="aitag" id="tradeTag">AI 交涉中</span>
+        <span class="money" id="tradeAiMoney">¥ 0</span>
+      </div>
+    </div>
+    <div class="trade-q" id="tradeBody"></div>
+    <div class="section-tag">你的答复</div>
+    <div class="trade-actions">
+      <button class="goldbtn" id="trAccept">同意</button>
+      <button class="closebtn" id="trReject">拒绝</button>
+    </div>
+    <div class="trade-counter">
+      <span>加价</span>
+      <input type="number" id="trPrice" min="0" step="50" value="0">
+      <button class="closebtn" id="trCounter">提交还价</button>
+      <span class="trade-tip" id="trTip"></span>
+    </div>
+    <div class="endstats" id="tradeNote"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="shopOv">
+  <div class="card shop wide">
+    <div class="shop-h">
+      <h2>商店</h2>
+      <div class="shopfx">
+        <span class="money" id="shopMoney">¥ 200</span>
+        <button class="closebtn" id="closeShop">关闭</button>
+      </div>
+    </div>
+    <div class="shoptabs" id="shopTabs"></div>
+    <div class="shopview" id="shopView"></div>
+    <div class="shop-foot">
+      <span id="ownCounts">—</span>
+      <span id="shopBonus" class="shop-bonus"></span>
+    </div>
+    <div class="shop-note">矿场 ¥100 / 营地 ¥200 / 商队 ¥350 每座每天产出 · 堡垒每座为主国 +1 防守 · 邦国特产未攻克需双倍价 · 暴击造成双倍伤害 · 溅射随机波及 2 国 · 「购入立即获得」类商品每天限买 1 次 · 30 秒 = 1 天</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="depOv">
+  <div class="deploy">
+    <div class="deploy-head">
+      <h2 id="depTitle">部署</h2>
+      <button class="closebtn" id="depClose">返回地图</button>
+    </div>
+    <div class="deploy-body">
+      <div class="depmap" id="depMap"></div>
+      <div class="depopts" id="depOpts">
+        <div class="depnote" id="depMsg">点击下方「部署」放置单位，部署后点击地图上的单位即可选为射击目标。</div>
+        <div class="dep-selected">射击单位：<span id="selFireNm">未选择</span></div>
+        <div class="depfirebar"><button class="firebtn" id="depFire">发射子弹</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+// ==================== 音效：Web Audio 实时合成 ====================
+// 全部音效由振荡器 + 噪声缓冲实时合成，不引入任何音频文件，
+// 保持「单个 HTML 文件 / 零依赖 / 零构建」的分发方式不变。
+// 浏览器自动播放策略要求用户手势后才能出声，所以 AudioContext 延迟到首次点击才创建；
+// 未解锁前所有音效静默跳过。全程 try/catch，音频异常绝不冒泡到游戏逻辑。
+const SND = (() => {
+  let ctx = null, master = null, nbuf = null, dead = false;
+  let muted = false;
+  try { muted = localStorage.getItem('snd') === '0'; } catch (e) {}
+  try { dead = !(window.AudioContext || window.webkitAudioContext); } catch (e) { dead = true; }
+
+  // 首次用户手势时调用：创建并解锁音频上下文
+  function unlock() {
+    if (dead || ctx) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 0.5;
+      master.connect(ctx.destination);
+    } catch (e) { dead = true; ctx = null; return; }
+    if (ctx.state === 'suspended') { try { ctx.resume().catch(() => {}); } catch (e) {} }
+  }
+
+  function noiseBuf() {
+    if (nbuf) return nbuf;
+    const n = Math.floor(ctx.sampleRate * 0.7);
+    nbuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = nbuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return nbuf;
+  }
+
+  // 单个振荡器音：支持滑音、延迟、包络
+  function tone(o) {
+    if (muted || !ctx) return;
+    try {
+      const t0 = ctx.currentTime + (o.delay || 0);
+      const dur = o.dur || 0.12;
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.freq, t0);
+      if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.to), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(o.gain == null ? 0.3 : o.gain, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  }
+
+  // 噪声冲击：经带通滤波，用于爆炸/呼啸/撞击
+  function noise(o) {
+    if (muted || !ctx) return;
+    try {
+      const t0 = ctx.currentTime + (o.delay || 0);
+      const dur = o.dur || 0.2;
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      src.buffer = noiseBuf();
+      f.type = o.filter || 'bandpass';
+      f.frequency.setValueAtTime(o.freq || 900, t0);
+      if (o.to) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t0 + dur);
+      f.Q.value = o.q == null ? 1.2 : o.q;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(o.gain == null ? 0.22 : o.gain, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t0); src.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  }
+
+  // 一组音符依次奏出
+  function arp(list, o) {
+    list.forEach((f, i) => tone(Object.assign({}, o, { freq: f, delay: (o.delay || 0) + i * (o.step || 0.07) })));
+  }
+
+  return {
+    unlock: unlock,
+    isMuted: () => muted,
+    toggle() {
+      muted = !muted;
+      try { localStorage.setItem('snd', muted ? '0' : '1'); } catch (e) {}
+      if (master) master.gain.value = muted ? 0 : 0.5;
+      if (!muted) unlock();
+      return muted;
+    },
+
+    // 开火：兵种决定音色，威力决定低频厚度，暴击追加金属撞击
+    fire(atk, dom, isCrit) {
+      if (muted || !ctx) return;
+      const big = Math.max(0, Math.min(1, (atk || 5) / 10));
+      const navy = dom === 'navy', air = dom === 'air';
+      noise({ dur: 0.15 + big * 0.2, freq: navy ? 420 : air ? 2600 : 900, to: 120, q: 0.8, gain: 0.16 + big * 0.14 });
+      const base = navy ? 150 : air ? 420 : 230;
+      tone({ type: 'sawtooth', freq: base * (1 + big * 0.6), to: base * 0.35, dur: 0.16 + big * 0.16, gain: 0.14 + big * 0.09 });
+      if (air) noise({ dur: 0.3, freq: 3000, to: 5400, q: 3, gain: 0.08, delay: 0.02 });
+      if (isCrit) {
+        noise({ dur: 0.11, freq: 5200, to: 2400, q: 6, gain: 0.15, delay: 0.03 });
+        tone({ type: 'square', freq: 1400, to: 1900, dur: 0.09, gain: 0.08, delay: 0.02 });
+        tone({ type: 'triangle', freq: 2100, dur: 0.24, gain: 0.07, delay: 0.06 });
+      }
+    },
+    // 攻克：上行琶音，主国额外加低音铺底
+    conquer(isMain) {
+      if (muted || !ctx) return;
+      arp(isMain ? [392, 523, 659, 784, 1047] : [392, 523, 659], { type: 'triangle', dur: 0.3, gain: 0.14 });
+      noise({ dur: 0.5, freq: 180, to: 60, q: 0.7, gain: 0.18, delay: 0.02 });
+      if (isMain) { tone({ type: 'sine', freq: 131, dur: 0.8, gain: 0.11, delay: 0.1 }); tone({ type: 'sine', freq: 196, dur: 0.7, gain: 0.09, delay: 0.18 }); }
+    },
+    // 溅射命中
+    splash() { noise({ dur: 0.12, freq: 1800, to: 500, q: 1.4, gain: 0.1 }); },
+    // 缴获金币
+    loot() { if (muted || !ctx) return; arp([1568, 2093, 2637], { type: 'sine', dur: 0.16, gain: 0.06, step: 0.05 }); },
+    // 你的回合
+    turn() { tone({ type: 'sine', freq: 880, dur: 0.15, gain: 0.12 }); tone({ type: 'sine', freq: 1320, dur: 0.24, gain: 0.1, delay: 0.11 }); },
+    // 购买
+    buy() { tone({ type: 'square', freq: 1180, to: 1760, dur: 0.06, gain: 0.08 }); tone({ type: 'sine', freq: 2340, dur: 0.08, gain: 0.04, delay: 0.04 }); },
+    // 玩家出局
+    eliminate() { noise({ dur: 0.6, freq: 900, to: 80, q: 0.6, gain: 0.18 }); arp([330, 247], { type: 'sawtooth', to: 150, dur: 0.45, gain: 0.09, step: 0.15 }); },
+    win() { if (muted || !ctx) return; arp([523, 659, 784, 1047, 1319], { type: 'triangle', dur: 0.5, gain: 0.13, step: 0.13 }); },
+    lose() { if (muted || !ctx) return; arp([440, 392, 330, 262], { type: 'sawtooth', dur: 0.45, gain: 0.1, step: 0.16 }); },
+    // 非法操作
+    deny() { tone({ type: 'square', freq: 180, to: 110, dur: 0.15, gain: 0.1 }); },
+    // 轻点反馈
+    tick() { tone({ type: 'sine', freq: 1600, dur: 0.03, gain: 0.035 }); }
+  };
+})();
+
+// 首次用户手势解锁音频（捕获阶段，不影响任何既有监听器）
+['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  window.addEventListener(ev, () => SND.unlock(), { capture: true, passive: true }));
+
+const STATES = {
+  turkey:     { name:'土耳其',    type:'main',  color:'#b97a00', stats:{陆军:100,空军:55,海军:40},  desc:'横跨欧亚的庞然大物，并吞保加利亚与亚美尼亚，兵锋直指多瑙河与高加索。' },
+  germany:    { name:'德国',      type:'main',  color:'#17bddd', stats:{陆军:75,空军:100,海军:60}, desc:'中欧工业心脏，精心锻造的空军掌握制空权。无论侦察、轰炸还是空战，都令对手望尘莫及，是天空的主人。' },
+  uk:         { name:'英国',      type:'main',  color:'#2b4cff', stats:{陆军:60,空军:75,海军:100}, desc:'岛国雄狮，皇家海军纵横四海。巨舰是最可靠的后盾，无论贸易线还是登陆战，都由舰队说了算。' },
+  portugal:   { name:'葡萄牙',    type:'vassal', color:'#3d6b57', inc: 60,  resource:'航海 · 香料', desc:'面向大西洋的航海邦国，掌握远洋贸易航线。' },
+  spain:      { name:'西班牙',    type:'vassal', color:'#4a5a3a', inc: 95,  resource:'白银 · 羊毛', desc:'西南半岛邦国，银矿与羊毛带来滚滚财富。' },
+  france:     { name:'法国',      type:'vassal', color:'#2f5d57', inc: 90,  resource:'工业 · 葡萄酒', desc:'富庶的西欧邦国，工坊林立，葡萄酒甘醇。' },
+  ireland:    { name:'爱尔兰',    type:'vassal', color:'#4a6b4e', inc: 45,  resource:'农牧 · 绿岛', desc:'英格兰以西的绿岛邦国，田园农牧充裕。' },
+  netherlands:{ name:'荷兰',      type:'vassal', color:'#35586b', inc: 95,  resource:'贸易 · 金融', desc:'低地贸易邦国，遍布商港与钱庄。' },
+  belgium:    { name:'比利时',    type:'vassal', color:'#4c5a70', inc: 65,  resource:'毛纺 · 铁矿', desc:'吞并卢森堡要塞后，比利时并得佛兰德毛纺与铁矿之利，商路畅通。' },
+  switzerland:{ name:'瑞士',      type:'vassal', color:'#6a6a5f', inc: 40,  resource:'山地堡垒', desc:'阿尔卑斯山中的堡垒邦国，易守难攻。' },
+  italy:      { name:'意大利',    type:'vassal', color:'#6b553a', inc: 70,  resource:'工匠 · 美术', desc:'亚平宁半岛邦国，工巧匠遍布，美术璀璨。' },
+  denmark:    { name:'丹麦',      type:'vassal', color:'#3f5a6d', inc: 55,  resource:'渔业 · 航运', desc:'北欧航运邦国，扼守咽喉海峡。' },
+  norway:     { name:'挪威',      type:'vassal', color:'#3a5a58', inc: 50,  resource:'木材 · 渔业', desc:'峡湾之国，木材与渔业丰饶。' },
+  sweden:     { name:'瑞典',      type:'vassal', color:'#465a52', inc: 65,  resource:'铁矿 · 森林', desc:'北欧大国，优质铁矿与无尽森林。' },
+  finland:    { name:'芬兰',      type:'vassal', color:'#4a5d48', inc: 45,  resource:'森林 · 极寒', desc:'千湖森林之国，极寒让入侵者寸步难行。' },
+  poland:     { name:'波兰',      type:'vassal', color:'#5d5a35', inc: 65,  resource:'黑麦 · 骑兵', desc:'吞并斯洛伐克后，波兰攫取喀尔巴阡门户，黑麦与骑兵驰骋南下。' },
+  czech:      { name:'捷克',      type:'vassal', color:'#6a5a44', inc: 70,  resource:'波米亚水晶', desc:'波希米亚水晶晶莹剔透，是名贵的贡品。' },
+  austria:    { name:'奥地利',    type:'vassal', color:'#7a4f5c', inc: 70,  resource:'水晶 · 音乐', desc:'吞并斯洛文尼亚后，奥地利直抵亚得里亚海，音乐与水晶之国愈发富丽。' },
+  hungary:    { name:'匈牙利',    type:'vassal', color:'#4d5c42', inc: 55,  resource:'马匹 · 葡萄', desc:'吞并克罗地亚后，匈牙利握有亚得里亚海出海口，良马与葡萄园著称。' },
+  ukraine:    { name:'乌克兰',    type:'vassal', color:'#55602f', inc: 85,  resource:'黑土 · 粮食', desc:'欧洲粮仓，黑土地出产的粮食养活了无数军队。' },
+  belarus:    { name:'白俄罗斯',  type:'vassal', color:'#5f5c3c', inc: 40,  resource:'沼泽 · 木材', desc:'密林沼泽之地，道路难行而木材丰富。' },
+  serbia:     { name:'塞尔维亚',  type:'vassal', color:'#5c4a3f', inc: 50,  resource:'铜矿 · 核桃木', desc:'吞并波黑、黑山与科索沃后的巴尔干大邦，铜矿、森林与海岸并得。' },
+  greece:     { name:'希腊',      type:'vassal', color:'#3a5b6b', inc: 55,  resource:'橄榄 · 航海', desc:'吞并阿尔巴尼亚与北马其顿后，希腊一统巴尔干南部，橄榄油与航海经验丰富。' },
+  romania:    { name:'罗马尼亚',  type:'vassal', color:'#4b4940', inc: 85,  resource:'石油 · 黑土地', desc:'拥有珍贵的石油资源，并吞摩尔多瓦后疆域直达德涅斯特河。' },
+  russia:     { name:'俄罗斯',    type:'vassal', color:'#43503a', inc: 100, resource:'广袤国土 · 皮毛', desc:'吸纳格鲁吉亚与阿塞拜疆后，高加索山脉尽入囊中，领土深不可测。' },
+  jj:         { name:'JJ共和国',  type:'vassal', color:'#7a5f8a', inc: 80,  resource:'合金', desc:'爱沙尼亚、拉脱维亚与立陶宛握手言和，合并而成的联邦制邦国，举国冶炼合金，技艺冠绝波罗的海。' },
+};
+const ORDER = ['turkey','germany','uk','portugal','spain','france','ireland','netherlands','belgium','switzerland','italy','denmark','norway','sweden','finland','poland','czech','austria','hungary','ukraine','belarus','jj','serbia','greece','romania','russia'];
+/* autogenerated */
+var EPATHS = {"norway":"M4.4 -16.2L4.9 -15.8L4.7 -15.7L4.9 -15.4L4.6 -15.2L4.5 -15.2L4.6 -15.5L4.4 -15.7L4.1 -15.5L4.0 -15.2L3.9 -15.0L3.7 -15.1L3.5 -15.1L3.3 -15.3L3.2 -15.2L3.1 -15.2L3.1 -14.9L2.8 -15.0L2.8 -14.7L2.6 -14.7L2.5 -14.5L2.4 -14.0L2.1 -13.5L2.2 -13.4L2.1 -13.2L2.0 -13.2L1.9 -12.9L1.9 -12.4L2.0 -12.3L1.9 -11.9L1.8 -11.7L1.7 -11.5L1.6 -11.7L1.3 -11.3L1.1 -11.3L0.9 -11.4L0.8 -11.7L0.8 -12.5L0.9 -12.7L1.3 -13.0L1.7 -13.4L1.9 -13.9L2.3 -14.7L2.6 -15.0L3.0 -15.5L3.4 -15.7L3.6 -15.7L3.9 -16.1L4.1 -16.1L4.4 -16.2Z","uk":"M-0.9 -10.3L-1.0 -10.1L-1.1 -10.1L-1.2 -10.1L-1.2 -10.3L-1.2 -10.4L-1.1 -10.4L-0.9 -10.3Z M-0.5 -11.4L-0.6 -11.1L-0.5 -11.2L-0.3 -11.1L-0.3 -10.9L-0.5 -10.7L-0.3 -10.6L-0.3 -10.6L-0.2 -10.3L-0.1 -10.2L0.0 -9.9L0.1 -9.8L0.3 -9.8L0.2 -9.6L0.2 -9.5L0.2 -9.4L0.1 -9.3L-0.1 -9.3L-0.4 -9.2L-0.5 -9.3L-0.6 -9.2L-0.7 -9.2L-0.8 -9.1L-0.9 -9.1L-0.7 -9.4L-0.5 -9.4L-0.5 -9.5L-0.8 -9.5L-0.8 -9.6L-0.7 -9.7L-0.7 -9.8L-0.7 -10.0L-0.5 -10.0L-0.5 -10.0L-0.5 -10.1L-0.6 -10.3L-0.6 -10.3L-0.8 -10.3L-0.8 -10.4L-0.7 -10.5L-0.8 -10.6L-0.9 -10.5L-0.9 -10.7L-1.0 -10.9L-0.9 -11.2L-0.8 -11.4L-0.7 -11.4L-0.5 -11.4Z","hungary":"M2.2 -7.9L2.1 -8.0L2.1 -8.0L2.2 -8.0L2.3 -8.0L2.3 -8.1L2.3 -8.0L2.4 -8.0L2.4 -8.1L2.5 -8.1L2.5 -8.2L2.6 -8.3L2.6 -8.3L2.5 -8.4L2.6 -8.5L2.6 -8.5L2.7 -8.6L2.7 -8.6L2.7 -8.6L2.8 -8.6L2.9 -8.6L2.9 -8.6L3.0 -8.6L3.1 -8.7L3.1 -8.7L3.2 -8.7L3.2 -8.8L3.3 -8.8L3.4 -8.7L3.5 -8.7L3.6 -8.7L3.6 -8.6L3.5 -8.5L3.4 -8.4L3.3 -8.2L3.2 -8.2L3.1 -8.2L3.0 -8.1L3.0 -8.1L3.0 -8.0L3.0 -8.0L3.0 -7.9L2.9 -8.0L2.8 -7.9L2.7 -8.0L2.6 -8.0L2.6 -7.9L2.5 -8.0L2.5 -7.9L2.6 -7.8L2.6 -7.7L2.7 -7.6L2.7 -7.6L2.8 -7.5L2.9 -7.4L2.9 -7.4L2.8 -7.5L2.7 -7.5L2.5 -7.6L2.4 -7.8L2.4 -7.8L2.3 -7.9L2.3 -7.9L2.2 -8.0L2.2 -7.9Z M2.5 -8.4L2.5 -8.4Z","austria":"M2.3 -8.0L2.2 -8.0L2.2 -8.1L2.2 -8.2L2.2 -8.3L1.9 -8.3L1.9 -8.4L1.8 -8.4L1.7 -8.3L1.6 -8.4L1.6 -8.4L1.5 -8.4L1.5 -8.5L1.5 -8.5L1.6 -8.5L1.6 -8.5L1.7 -8.5L1.8 -8.5L1.9 -8.5L2.0 -8.5L2.0 -8.5L2.0 -8.5L2.0 -8.7L2.1 -8.7L2.1 -8.8L2.3 -8.7L2.3 -8.8L2.4 -8.9L2.5 -8.8L2.6 -8.8L2.7 -8.8L2.7 -8.7L2.7 -8.6L2.7 -8.6L2.6 -8.5L2.6 -8.5L2.5 -8.4L2.6 -8.3L2.6 -8.3L2.5 -8.2L2.5 -8.1L2.4 -8.1L2.4 -8.0L2.3 -8.0L2.3 -8.1L2.3 -8.0Z M2.7 -8.6L2.7 -8.6Z M2.2 -8.3L2.2 -8.3Z","serbia":"M3.5 -7.8L3.6 -7.8L3.5 -7.7L3.5 -7.6L3.6 -7.5L3.6 -7.5L3.5 -7.4L3.5 -7.4L3.5 -7.4L3.4 -7.3L3.4 -7.3L3.4 -7.3L3.3 -7.3L3.3 -7.3L3.2 -7.3L3.2 -7.3L3.2 -7.4L3.2 -7.4L3.1 -7.4L3.1 -7.4L3.0 -7.3L3.0 -7.3L3.0 -7.3L3.0 -7.3L2.9 -7.4L2.9 -7.4L2.8 -7.5L2.7 -7.6L2.7 -7.6L2.6 -7.7L2.6 -7.8L2.5 -7.9L2.5 -8.0L2.6 -7.9L2.6 -8.0L2.7 -8.0L2.8 -7.9L2.9 -8.0L3.0 -7.9L3.0 -7.9L3.0 -7.9L3.0 -8.0L3.0 -8.0L3.0 -8.1L3.1 -8.2L3.2 -8.2L3.3 -8.1L3.3 -8.0L3.3 -8.0L3.4 -8.0L3.4 -7.9L3.5 -7.8L3.5 -7.9L3.6 -7.8L3.5 -7.8Z M3.3 -7.3L3.3 -7.3Z M3.1 -7.4L3.1 -7.4Z M3.0 -7.9L3.0 -7.9Z","ireland":"M-1.0 -10.1L-0.9 -9.9L-1.1 -9.7L-1.3 -9.5L-1.6 -9.5L-1.4 -9.8L-1.5 -10.1L-1.3 -10.3L-1.2 -10.4L-1.2 -10.3L-1.2 -10.1L-1.1 -10.1L-1.0 -10.1Z","russia":"M7.3 -8.7L7.4 -8.6L7.5 -8.6L7.6 -8.4L7.6 -8.3L7.7 -8.2L7.6 -8.1L7.5 -8.1L7.3 -7.8L7.5 -7.6L7.5 -7.5L7.6 -7.2L7.5 -7.2L7.6 -7.2L7.7 -7.1L7.8 -7.0L7.9 -7.0L7.9 -6.9L7.8 -6.9L7.8 -6.7L7.7 -6.7L7.7 -6.6L7.7 -6.5L7.6 -6.5L7.5 -6.6L7.6 -6.7L7.5 -6.8L7.5 -6.8L7.3 -6.6L7.3 -6.8L7.2 -6.8L7.2 -6.8L7.2 -6.9L7.1 -7.0L7.2 -7.0L7.1 -7.1L7.1 -7.1L6.8 -7.1L6.7 -7.2L6.5 -7.2L6.5 -7.2L6.6 -7.3L6.5 -7.4L6.4 -7.5L6.3 -7.5L6.3 -7.6L6.1 -7.8L5.9 -7.9L5.8 -8.0L5.9 -8.0L6.0 -8.2L5.9 -8.3L6.1 -8.4L6.1 -8.4L6.0 -8.4L6.0 -8.5L6.1 -8.6L6.2 -8.6L6.3 -8.7L6.2 -8.8L6.3 -8.9L6.3 -9.0L6.1 -9.1L6.0 -9.1L5.9 -9.2L5.8 -9.2L5.6 -9.2L5.6 -9.3L5.5 -9.4L5.4 -9.4L5.4 -9.5L5.4 -9.5L5.3 -9.7L5.1 -9.7L5.1 -9.7L5.1 -9.6L5.0 -9.6L5.0 -9.8L4.9 -9.9L4.9 -9.9L5.1 -9.9L5.1 -9.9L5.1 -10.0L5.0 -10.1L5.0 -10.1L4.9 -10.2L4.8 -10.3L4.9 -10.4L4.8 -10.5L4.7 -10.6L4.6 -10.6L4.6 -10.6L4.4 -10.7L4.4 -10.9L4.4 -11.0L4.3 -11.1L4.4 -11.2L4.3 -11.5L4.4 -11.6L4.4 -11.7L4.6 -11.9L4.4 -12.0L4.7 -12.4L4.9 -12.6L5.0 -12.8L4.7 -13.0L4.8 -13.3L4.6 -13.5L4.7 -13.9L4.6 -14.3L4.7 -14.6L6.3 -14.7L6.4 -14.5L6.5 -14.2L6.3 -14.0L6.0 -13.9L5.3 -14.2L5.2 -14.2L5.5 -13.9L5.5 -13.7L5.5 -13.3L5.7 -13.2L5.8 -13.1L5.8 -13.3L5.7 -13.5L5.8 -13.6L6.2 -13.4L6.4 -13.5L6.2 -13.7L6.6 -14.1L6.8 -14.1L6.9 -14.0L7.0 -14.2L6.9 -14.5L6.9 -14.7L7.4 -14.6L7.2 -14.6L7.2 -14.3L7.3 -14.2L7.5 -14.3L7.6 -14.5L7.9 -14.7L8.9 -9.4L8.8 -9.2L8.6 -9.3L8.2 -9.5L8.0 -9.5L7.7 -9.2L7.6 -9.1L7.5 -9.2L7.3 -8.9L7.4 -8.9L7.3 -8.7Z M7.1 -6.8L7.2 -6.8L7.2 -6.7L7.2 -6.6L7.1 -6.6L7.1 -6.7L7.0 -6.8L7.1 -6.8L7.1 -6.8Z M7.4 -7.1L7.4 -7.1Z M3.1 -10.2L3.1 -10.4L3.3 -10.4L3.5 -10.4L3.6 -10.3L3.6 -10.3L3.6 -10.2L3.3 -10.2L3.1 -10.2Z M6.9 -7.4L6.9 -7.4L7.0 -7.4L6.9 -7.4L6.9 -7.4L6.7 -7.5L6.4 -7.6L6.3 -7.6L6.4 -7.6L6.7 -7.5L6.9 -7.4Z M7.2 -7.3L7.3 -7.3L7.2 -7.3L7.1 -7.4L7.2 -7.3Z M7.1 -6.8L7.1 -6.8Z M3.6 -10.2L3.6 -10.2Z","turkey":"M4.6 -7.1L4.9 -7.1L5.1 -7.2L5.3 -7.3L5.5 -7.3L5.8 -7.1L5.8 -7.1L6.0 -7.1L6.2 -7.1L6.3 -7.1L6.5 -7.2L6.7 -7.2L6.8 -7.1L7.1 -7.1L7.1 -7.1L7.2 -7.0L7.1 -7.0L7.2 -6.9L7.2 -6.8L7.2 -6.8L7.3 -6.8L7.3 -6.6L7.2 -6.6L7.2 -6.7L7.2 -6.8L7.1 -6.8L7.1 -6.8L7.0 -6.8L6.9 -6.7L7.0 -6.5L6.9 -6.5L7.0 -6.3L7.0 -6.3L6.9 -6.3L6.7 -6.3L6.7 -6.3L6.5 -6.3L6.4 -6.3L6.2 -6.2L6.1 -6.2L6.0 -6.2L5.8 -6.2L5.8 -6.2L5.8 -6.1L5.7 -6.1L5.7 -6.0L5.6 -6.1L5.7 -6.2L5.6 -6.2L5.5 -6.2L5.3 -6.1L5.1 -6.1L5.0 -6.2L4.8 -6.2L4.8 -6.1L4.7 -6.1L4.5 -6.2L4.3 -6.2L4.2 -6.4L4.1 -6.5L4.2 -6.7L4.1 -6.8L4.3 -7.0L4.5 -7.0L4.6 -7.1Z M4.1 -7.1L4.2 -7.2L4.1 -7.2L4.1 -7.1L4.0 -7.1L3.8 -7.2L3.7 -7.1L3.6 -7.1L3.6 -7.3L3.5 -7.4L3.5 -7.4L3.5 -7.4L3.6 -7.5L3.6 -7.5L3.5 -7.6L3.5 -7.7L3.6 -7.8L3.6 -7.7L3.7 -7.7L3.8 -7.7L4.0 -7.6L4.1 -7.7L4.3 -7.8L4.4 -7.7L4.5 -7.6L4.4 -7.6L4.3 -7.4L4.4 -7.3L4.4 -7.2L4.6 -7.1L4.5 -7.1L4.3 -7.1L4.3 -7.0L4.3 -7.0L4.1 -6.9L4.1 -7.0L4.1 -7.0L4.1 -7.1Z M3.6 -7.8L3.6 -7.8Z M6.8 -7.1L6.8 -7.1Z","czech":"M2.7 -8.8L2.6 -8.8L2.5 -8.8L2.4 -8.9L2.3 -8.8L2.3 -8.7L2.1 -8.8L2.0 -8.9L2.0 -9.0L2.0 -9.1L1.9 -9.2L2.0 -9.2L2.1 -9.3L2.2 -9.3L2.2 -9.4L2.3 -9.3L2.4 -9.4L2.4 -9.3L2.6 -9.3L2.5 -9.2L2.6 -9.1L2.6 -9.2L2.8 -9.2L2.8 -9.1L2.9 -9.1L3.0 -9.0L2.9 -9.0L2.9 -8.9L2.9 -8.9L2.8 -8.9L2.8 -8.9L2.8 -8.8L2.8 -8.8L2.7 -8.8L2.7 -8.8Z","denmark":"M2.0 -10.6L1.9 -10.3L1.7 -10.5L1.7 -10.6L1.9 -10.7L2.0 -10.6Z M1.7 -10.8L1.7 -10.7L1.6 -10.7L1.5 -10.5L1.6 -10.4L1.5 -10.3L1.3 -10.4L1.3 -10.5L1.3 -10.8L1.3 -10.9L1.3 -11.0L1.5 -11.0L1.5 -11.1L1.7 -11.2L1.7 -11.0L1.6 -10.9L1.6 -10.8L1.7 -10.8Z","poland":"M2.4 -9.3L2.4 -9.4L2.3 -9.5L2.3 -9.6L2.3 -9.8L2.2 -9.8L2.3 -9.9L2.2 -10.1L2.3 -10.1L2.6 -10.3L2.8 -10.3L2.9 -10.3L2.9 -10.2L3.1 -10.2L3.3 -10.2L3.6 -10.2L3.7 -10.2L3.7 -10.1L3.7 -10.0L3.7 -9.9L3.7 -9.8L3.6 -9.7L3.7 -9.6L3.7 -9.5L3.8 -9.3L3.8 -9.2L3.7 -9.2L3.5 -9.0L3.6 -8.9L3.5 -8.9L3.5 -8.8L3.5 -8.7L3.4 -8.7L3.3 -8.8L3.2 -8.8L3.2 -8.7L3.1 -8.7L3.1 -8.7L3.0 -8.6L2.9 -8.6L2.9 -8.6L2.8 -8.6L2.7 -8.6L2.7 -8.6L2.7 -8.7L2.7 -8.8L2.7 -8.8L2.8 -8.8L2.8 -8.8L2.8 -8.9L2.8 -8.9L2.9 -8.9L2.9 -8.9L2.9 -9.0L3.0 -9.0L3.0 -9.0L2.9 -9.1L2.8 -9.1L2.8 -9.2L2.6 -9.2L2.6 -9.1L2.5 -9.2L2.6 -9.3L2.4 -9.3Z M2.4 -9.4L2.4 -9.4Z","germany":"M1.6 -10.4L1.6 -10.3L1.7 -10.2L1.7 -10.1L1.9 -10.2L2.0 -10.2L2.1 -10.1L2.2 -10.1L2.3 -9.9L2.2 -9.8L2.3 -9.8L2.3 -9.6L2.3 -9.5L2.4 -9.4L2.3 -9.3L2.2 -9.4L2.2 -9.3L2.1 -9.3L2.0 -9.2L1.9 -9.2L2.0 -9.1L2.0 -9.0L2.0 -8.9L2.1 -8.8L2.1 -8.7L2.0 -8.7L2.0 -8.5L2.0 -8.5L2.0 -8.5L1.9 -8.5L1.8 -8.5L1.7 -8.5L1.6 -8.5L1.6 -8.5L1.5 -8.5L1.3 -8.6L1.3 -8.5L1.2 -8.5L1.2 -8.7L1.3 -8.9L1.0 -8.9L1.0 -9.0L1.0 -9.1L0.9 -9.1L1.0 -9.3L0.9 -9.6L1.0 -9.6L1.1 -9.7L1.1 -9.9L1.1 -10.0L1.1 -10.0L1.2 -10.1L1.3 -10.0L1.4 -10.1L1.3 -10.2L1.3 -10.4L1.5 -10.3L1.6 -10.4Z","ukraine":"M5.0 -9.6L5.1 -9.6L5.1 -9.7L5.1 -9.7L5.3 -9.7L5.4 -9.5L5.4 -9.5L5.4 -9.4L5.5 -9.4L5.6 -9.3L5.6 -9.2L5.8 -9.2L5.9 -9.2L6.0 -9.1L6.1 -9.1L6.3 -9.0L6.3 -8.9L6.2 -8.8L6.3 -8.7L6.2 -8.6L6.1 -8.6L6.0 -8.5L6.0 -8.4L5.9 -8.4L5.8 -8.3L5.6 -8.3L5.5 -8.2L5.5 -8.1L5.6 -8.0L5.7 -8.0L5.7 -8.0L5.5 -7.9L5.3 -7.8L5.2 -7.8L5.3 -7.9L5.1 -8.0L5.1 -8.0L5.3 -8.1L5.2 -8.2L5.0 -8.2L5.0 -8.3L4.8 -8.3L4.8 -8.2L4.7 -8.0L4.6 -8.0L4.5 -8.0L4.4 -8.0L4.5 -8.1L4.5 -8.1L4.5 -8.2L4.5 -8.3L4.6 -8.3L4.6 -8.2L4.7 -8.2L4.7 -8.3L4.7 -8.3L4.7 -8.3L4.6 -8.4L4.6 -8.5L4.6 -8.5L4.6 -8.6L4.5 -8.6L4.4 -8.7L4.3 -8.7L4.2 -8.7L4.2 -8.7L4.1 -8.7L4.1 -8.6L4.0 -8.6L3.9 -8.6L3.8 -8.6L3.7 -8.6L3.6 -8.6L3.6 -8.6L3.6 -8.7L3.5 -8.7L3.5 -8.8L3.5 -8.9L3.6 -8.9L3.5 -9.0L3.7 -9.2L3.8 -9.2L3.8 -9.3L3.7 -9.5L3.8 -9.5L3.9 -9.6L4.0 -9.6L4.1 -9.6L4.3 -9.5L4.4 -9.5L4.5 -9.5L4.6 -9.5L4.6 -9.4L4.7 -9.4L4.8 -9.4L4.8 -9.6L4.9 -9.6L5.0 -9.6Z","italy":"M2.4 -6.5L2.4 -6.4L2.4 -6.3L2.4 -6.2L2.3 -6.3L2.2 -6.3L2.0 -6.4L2.0 -6.5L2.2 -6.5L2.3 -6.5L2.4 -6.5Z M1.4 -7.1L1.5 -7.0L1.5 -6.7L1.4 -6.7L1.4 -6.6L1.3 -6.7L1.3 -6.9L1.3 -7.1L1.4 -7.1L1.4 -7.1Z M1.9 -8.3L2.2 -8.3L2.2 -8.2L2.2 -8.1L2.1 -8.1L1.9 -8.0L1.9 -7.9L1.9 -7.8L2.0 -7.7L2.1 -7.6L2.2 -7.4L2.4 -7.3L2.5 -7.3L2.5 -7.2L2.5 -7.2L2.6 -7.1L2.8 -7.0L2.9 -6.9L2.9 -6.9L2.9 -6.8L2.8 -6.9L2.6 -7.0L2.6 -6.8L2.7 -6.7L2.7 -6.6L2.6 -6.6L2.5 -6.5L2.5 -6.4L2.5 -6.5L2.5 -6.6L2.5 -6.7L2.5 -6.8L2.4 -6.9L2.4 -6.9L2.3 -7.0L2.2 -7.0L2.1 -7.1L2.0 -7.1L1.9 -7.2L1.8 -7.4L1.7 -7.5L1.6 -7.7L1.5 -7.7L1.4 -7.8L1.3 -7.8L1.2 -7.7L1.2 -7.6L1.2 -7.7L1.1 -7.8L1.1 -7.9L1.1 -8.0L1.1 -8.1L1.1 -8.2L1.1 -8.1L1.2 -8.1L1.3 -8.2L1.3 -8.2L1.4 -8.2L1.4 -8.3L1.6 -8.2L1.6 -8.3L1.6 -8.4L1.7 -8.3L1.8 -8.4L1.9 -8.4L1.9 -8.3Z","greece":"M3.2 -7.3L3.2 -7.3Z M3.7 -6.7L3.6 -6.7L3.7 -6.6L3.8 -6.5L3.8 -6.4L3.6 -6.4L3.7 -6.3L3.6 -6.3L3.6 -6.2L3.5 -6.1L3.4 -6.2L3.3 -6.4L3.3 -6.5L3.3 -6.6L3.2 -6.7L3.2 -6.8L3.1 -6.8L3.1 -6.8L3.0 -6.9L3.0 -7.0L3.0 -7.2L3.1 -7.2L3.0 -7.3L3.0 -7.3L3.1 -7.4L3.1 -7.4L3.2 -7.4L3.2 -7.4L3.2 -7.3L3.2 -7.3L3.2 -7.3L3.2 -7.2L3.2 -7.1L3.3 -7.0L3.2 -7.1L3.2 -7.2L3.2 -7.3L3.3 -7.3L3.3 -7.3L3.4 -7.3L3.4 -7.3L3.4 -7.3L3.5 -7.4L3.6 -7.3L3.6 -7.1L3.7 -7.1L3.8 -7.2L4.0 -7.1L4.1 -7.1L4.1 -7.2L4.2 -7.2L4.1 -7.1L4.1 -7.0L4.0 -7.0L3.9 -7.1L3.7 -7.0L3.8 -6.9L3.8 -6.9L3.7 -6.9L3.6 -7.0L3.6 -6.9L3.6 -6.8L3.7 -6.7Z M4.0 -5.9L4.0 -5.9L4.1 -5.9L4.1 -5.9L3.9 -5.9L3.9 -5.9L3.7 -5.9L3.7 -6.0L3.7 -6.0L3.8 -5.9L3.9 -6.0L4.0 -5.9Z M4.2 -7.2L4.2 -7.2Z","portugal":"M-1.4 -7.3L-1.4 -7.3L-1.3 -7.3L-1.3 -7.2L-1.2 -7.2L-1.1 -7.3L-1.0 -7.3L-1.0 -7.2L-1.1 -7.1L-1.1 -6.9L-1.1 -6.9L-1.1 -6.8L-1.2 -6.8L-1.1 -6.7L-1.2 -6.5L-1.1 -6.5L-1.1 -6.4L-1.2 -6.3L-1.2 -6.3L-1.2 -6.2L-1.3 -6.3L-1.4 -6.2L-1.4 -6.4L-1.4 -6.5L-1.5 -6.5L-1.5 -6.6L-1.5 -6.7L-1.4 -6.8L-1.4 -6.9L-1.4 -7.0L-1.4 -7.1L-1.4 -7.2L-1.4 -7.3Z","belgium":"M1.0 -9.1L1.0 -9.0L0.9 -9.0L0.9 -9.0L0.8 -9.1L0.7 -9.1L0.6 -9.2L0.5 -9.3L0.4 -9.3L0.4 -9.4L0.5 -9.4L0.6 -9.4L0.8 -9.5L0.9 -9.4L1.0 -9.3L0.9 -9.1L1.0 -9.1Z M0.9 -9.1L0.9 -9.1Z M0.5 -9.4L0.5 -9.4Z","jj":"M3.6 -10.3L3.6 -10.3L3.5 -10.4L3.3 -10.4L3.3 -10.7L3.3 -10.9L3.4 -11.1L3.5 -11.2L3.7 -11.0L3.8 -11.0L3.8 -11.2L3.8 -11.2L3.8 -11.4L3.8 -11.3L3.7 -11.4L3.7 -11.6L3.9 -11.7L4.1 -11.7L4.2 -11.7L4.4 -11.7L4.4 -11.6L4.3 -11.5L4.4 -11.2L4.3 -11.1L4.4 -11.0L4.4 -10.9L4.4 -10.7L4.3 -10.6L4.2 -10.6L4.2 -10.4L4.0 -10.3L4.0 -10.2L3.8 -10.1L3.7 -10.1L3.7 -10.2L3.6 -10.2L3.6 -10.2L3.6 -10.3Z M3.3 -10.7L3.3 -10.7Z","switzerland":"M1.5 -8.5L1.5 -8.5L1.5 -8.4L1.6 -8.4L1.6 -8.4L1.6 -8.3L1.6 -8.2L1.4 -8.3L1.4 -8.2L1.3 -8.2L1.3 -8.2L1.2 -8.1L1.1 -8.1L1.1 -8.2L1.0 -8.3L0.9 -8.2L0.9 -8.3L1.1 -8.5L1.1 -8.5L1.1 -8.5L1.2 -8.5L1.3 -8.5L1.3 -8.6L1.5 -8.5Z","netherlands":"M1.0 -10.0L1.1 -10.0L1.1 -9.9L1.1 -9.7L1.0 -9.6L0.9 -9.6L1.0 -9.3L0.9 -9.4L0.8 -9.5L0.6 -9.4L0.5 -9.4L0.6 -9.5L0.7 -9.9L1.0 -10.0Z","belarus":"M3.7 -10.1L3.8 -10.1L4.0 -10.2L4.0 -10.3L4.2 -10.4L4.2 -10.6L4.3 -10.6L4.4 -10.7L4.6 -10.6L4.6 -10.6L4.7 -10.6L4.8 -10.5L4.9 -10.4L4.8 -10.3L4.9 -10.2L5.0 -10.1L5.0 -10.1L5.1 -10.0L5.1 -9.9L5.1 -9.9L4.9 -9.9L4.9 -9.9L5.0 -9.8L5.0 -9.6L4.9 -9.6L4.8 -9.6L4.8 -9.4L4.7 -9.4L4.6 -9.4L4.6 -9.5L4.5 -9.5L4.4 -9.5L4.3 -9.5L4.1 -9.6L4.0 -9.6L3.9 -9.6L3.8 -9.5L3.7 -9.5L3.7 -9.6L3.6 -9.7L3.7 -9.8L3.7 -9.9L3.7 -10.0L3.7 -10.1Z","spain":"M-1.4 -7.3L-1.4 -7.4L-1.5 -7.5L-1.3 -7.7L-1.1 -7.6L-0.9 -7.6L-0.7 -7.6L-0.6 -7.6L-0.3 -7.6L-0.2 -7.5L0.1 -7.4L0.1 -7.5L0.3 -7.4L0.5 -7.4L0.5 -7.3L0.3 -7.1L0.1 -7.1L0.1 -7.0L0.0 -6.9L-0.0 -6.7L0.0 -6.6L-0.1 -6.5L-0.1 -6.4L-0.2 -6.4L-0.3 -6.2L-0.5 -6.2L-0.7 -6.2L-0.8 -6.1L-0.8 -6.1L-0.9 -6.1L-1.0 -6.1L-1.0 -6.3L-1.2 -6.3L-1.2 -6.3L-1.1 -6.4L-1.1 -6.5L-1.2 -6.5L-1.1 -6.7L-1.2 -6.8L-1.1 -6.8L-1.1 -6.9L-1.1 -6.9L-1.1 -7.1L-1.0 -7.2L-1.0 -7.3L-1.1 -7.3L-1.2 -7.2L-1.3 -7.2L-1.3 -7.3L-1.4 -7.3L-1.4 -7.3Z","france":"M1.5 -7.3L1.4 -7.2L1.4 -7.2L1.3 -7.3L1.4 -7.4L1.5 -7.5L1.5 -7.3Z M0.6 -9.2L0.7 -9.1L0.8 -9.1L0.9 -9.0L0.9 -9.0L1.0 -9.0L1.0 -8.9L1.3 -8.9L1.2 -8.7L1.2 -8.5L1.1 -8.5L1.1 -8.5L1.1 -8.5L0.9 -8.3L0.9 -8.2L1.0 -8.3L1.1 -8.2L1.1 -8.1L1.1 -8.0L1.1 -7.9L1.1 -7.8L1.2 -7.7L1.2 -7.6L1.0 -7.5L0.7 -7.6L0.5 -7.5L0.5 -7.4L0.3 -7.4L0.1 -7.5L0.1 -7.4L-0.2 -7.5L-0.3 -7.6L-0.2 -7.7L-0.2 -8.2L-0.3 -8.4L-0.5 -8.5L-0.7 -8.6L-0.7 -8.8L-0.5 -8.8L-0.3 -8.8L-0.3 -9.0L-0.2 -8.9L0.2 -9.1L0.3 -9.3L0.4 -9.4L0.4 -9.3L0.5 -9.3L0.6 -9.2Z","sweden":"M3.5 -13.8L3.3 -13.6L3.4 -13.3L3.1 -13.1L2.8 -12.8L2.7 -12.3L2.8 -12.1L3.0 -11.9L2.8 -11.5L2.6 -11.5L2.6 -11.0L2.5 -10.7L2.3 -10.7L2.2 -10.5L2.0 -10.5L2.0 -10.8L1.9 -11.1L1.7 -11.5L1.8 -11.7L1.9 -11.9L2.0 -12.3L1.9 -12.4L1.9 -12.9L2.0 -13.2L2.1 -13.2L2.2 -13.4L2.1 -13.5L2.4 -14.0L2.5 -14.5L2.6 -14.7L2.8 -14.7L2.8 -15.0L3.1 -14.9L3.1 -15.2L3.2 -15.2L3.5 -15.0L3.7 -14.7L3.7 -14.1L3.8 -13.9L3.5 -13.8Z M2.7 -11.1L2.7 -11.0L2.6 -10.7L2.6 -10.8L2.7 -11.1Z M3.0 -11.2L3.0 -11.1L3.0 -11.1L3.0 -11.1L3.0 -11.1L2.9 -11.0L2.9 -11.0L2.9 -11.0L2.9 -10.9L2.8 -10.9L2.9 -11.0L2.8 -11.0L2.9 -11.1L2.8 -11.1L2.9 -11.2L3.0 -11.2L3.0 -11.2L3.0 -11.2L3.0 -11.2Z M3.3 -13.1L3.3 -13.1L3.3 -13.1L3.3 -13.0L3.3 -13.0L3.3 -13.1L3.3 -13.1L3.3 -13.1Z","romania":"M4.5 -8.1L4.4 -8.0L4.5 -8.0L4.6 -8.0L4.7 -8.0L4.7 -7.9L4.6 -7.9L4.5 -7.9L4.5 -7.6L4.4 -7.7L4.3 -7.8L4.1 -7.7L4.0 -7.6L3.8 -7.7L3.7 -7.7L3.6 -7.7L3.6 -7.8L3.5 -7.8L3.6 -7.8L3.5 -7.9L3.5 -7.8L3.4 -7.9L3.4 -8.0L3.3 -8.0L3.3 -8.1L3.2 -8.2L3.3 -8.2L3.4 -8.4L3.5 -8.5L3.6 -8.6L3.6 -8.6L3.7 -8.6L3.8 -8.6L3.9 -8.6L4.0 -8.6L4.1 -8.6L4.1 -8.7L4.2 -8.7L4.2 -8.7L4.2 -8.7L4.3 -8.7L4.4 -8.7L4.5 -8.6L4.6 -8.6L4.6 -8.5L4.6 -8.5L4.6 -8.4L4.7 -8.3L4.7 -8.3L4.7 -8.3L4.7 -8.2L4.6 -8.2L4.6 -8.3L4.5 -8.3L4.5 -8.2L4.5 -8.1L4.5 -8.1Z M3.6 -8.6L3.6 -8.6Z","finland":"M4.5 -15.2L4.5 -14.9L4.7 -14.6L4.6 -14.3L4.7 -13.9L4.6 -13.5L4.8 -13.3L4.7 -13.0L5.0 -12.8L4.9 -12.6L4.7 -12.4L4.4 -12.0L4.1 -12.0L3.8 -11.9L3.6 -11.8L3.5 -12.0L3.3 -12.1L3.4 -12.4L3.3 -12.7L3.4 -12.9L3.5 -13.1L3.9 -13.5L4.0 -13.6L4.0 -13.8L3.8 -13.9L3.7 -14.1L3.7 -14.7L3.5 -15.0L3.2 -15.2L3.3 -15.3L3.5 -15.1L3.7 -15.1L3.9 -15.0L4.0 -15.2L4.1 -15.5L4.4 -15.7L4.6 -15.5L4.5 -15.2Z"};
+var ELABELS = {"norway":[2.86769013749557,-14.2255938456099,61.5772509751112],"uk":[-0.555980070621545,-10.1311130896152,34.2029531211204],"austria":[2.16925612913555,-8.40942995213278,12.4049142454645],"serbia":[3.16104235641408,-7.59583831533956,17.0123629903127],"hungary":[2.75598681461998,-8.15757798556748,17.5501241453624],"ireland":[-1.19135042022448,-10.064025446833,7.8602991608181],"turkey":[5.35926909618839,-6.90198553446447,98.3047462902358],"russia":[6.33380084351405,-9.37221604464391,659.071616311706],"denmark":[1.57099916148058,-10.7055274365212,6.16845715053299],"poland":[3.02291360012744,-9.21197222098499,46.5126567678996],"germany":[1.65940843475724,-9.34115201875683,45.9235940438201],"czech":[2.53162476442755,-9.02017013162832,10.1369672806629],"ukraine":[4.80795314353221,-8.74807201867147,73.9652304292356],"italy":[1.95060638306606,-7.30856926268278,34.6856526516922],"greece":[3.50669405583889,-6.85631135042393,19.6361589486921],"portugal":[-1.269928587641,-6.79524286202694,9.80246710191508],"jj":[3.90113873995385,-10.9179435539517,25.3267230965336],"switzerland":[1.32797446993802,-8.3443511579088,5.44020095418352],"belgium":[0.769028955962442,-9.18892089125959,4.13152255691006],"netherlands":[0.899684172867043,-9.68473591615039,5.26417936586547],"belarus":[4.42545182225443,-9.94531451844913,28.3011817142728],"spain":[-0.677035057328956,-6.90410127021375,53.268425457511],"sweden":[2.78732158558965,-12.2660036975186,80.3339184483467],"romania":[4.14793450072479,-8.24809250070526,31.458803290478],"france":[0.603217165375869,-8.31706985797551,65.673809246651],"finland":[4.02667804436313,-13.8491914028238,63.7823934771762]};
+var EBG = [];
+const map = document.getElementById('map');
+const landG = document.getElementById('land');
+const labG = document.getElementById('labs');
+
+Object.keys(EPATHS).forEach(k => {
+  if (!STATES[k]) return;
+  const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('class','cst ' + STATES[k].type);
+  p.setAttribute('data-k', k);
+  p.setAttribute('d', EPATHS[k]);
+  p.style.fill = STATES[k].color;
+  landG.appendChild(p);
+});
+
+const labels = [];
+Object.keys(ELABELS).forEach(k => {
+  if (!STATES[k]) return;
+  const fs = STATES[k].type === 'main' ? 0.36 : 0.30;
+  const w = STATES[k].name.length * fs * 0.95;
+  const h = fs * 1.2;
+  labels.push({ key: k, name: STATES[k].name, x: ELABELS[k][0], y: ELABELS[k][1], fs: fs, w: w, h: h, a: ELABELS[k][2] || 0, pin: k === 'norway' });
+});
+labels.sort((p, q) => q.a - p.a);
+
+const VXMIN=-2.6, VXMAX=12.4, VYMIN=-17.6, VYMAX=-3.4;
+for (let r = 0; r < 80; r++) {
+  let moved = false;
+  for (let i = 0; i < labels.length; i++) {
+    for (let j = i + 1; j < labels.length; j++) {
+      const A = labels[i], B = labels[j];
+      if (A.pin || B.pin) continue;
+      const ox = Math.min(A.x + A.w/2, B.x + B.w/2) - Math.max(A.x - A.w/2, B.x - B.w/2);
+      const oy = Math.min(A.y + A.h/2, B.y + B.h/2) - Math.max(A.y - A.h/2, B.y - B.h/2);
+      if (ox > 0 && oy > 0) {
+        moved = true;
+        if (oy < ox) {
+          const s = A.y < B.y ? -1 : 1;
+          A.y += s * (oy/2 + 0.01);
+          B.y -= s * (oy/2 + 0.01);
+        } else {
+          const s = A.x < B.x ? -1 : 1;
+          A.x += s * (ox/2 + 0.01);
+          B.x -= s * (ox/2 + 0.01);
+        }
+        A.x = Math.max(VXMIN + A.w/2, Math.min(VXMAX - A.w/2, A.x));
+        A.y = Math.max(VYMIN + A.h/2, Math.min(VYMAX - A.h/2, A.y));
+        B.x = Math.max(VXMIN + B.w/2, Math.min(VXMAX - B.w/2, B.x));
+        B.y = Math.max(VYMIN + B.h/2, Math.min(VYMAX - B.h/2, B.y));
+      }
+    }
+  }
+  if (!moved) break;
+}
+labels.forEach(l => {
+  const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('class','cname' + (STATES[l.key].type === 'main' ? ' main' : ''));
+  t.setAttribute('x', l.x.toFixed(2));
+  t.setAttribute('y', l.y.toFixed(2));
+  t.textContent = l.name;
+  labG.appendChild(t);
+});
+
+const panelName = document.getElementById('p-name');
+const panelTag = document.getElementById('p-tag');
+const panelStats = document.getElementById('p-stats');
+const panelRes = document.getElementById('p-res');
+const panelDesc = document.getElementById('p-desc');
+const panelHint = document.getElementById('p-hint');
+
+function select(key) {
+  const s = STATES[key];
+  if (!s) return;
+  document.querySelectorAll('.cst.sel').forEach(x => x.classList.remove('sel'));
+  document.querySelectorAll('.chip.sel').forEach(x => x.classList.remove('sel'));
+  const el = landG.querySelector('[data-k="' + key + '"]');
+  if (el) el.classList.add('sel');
+  const chip = document.querySelector('.chip[data-k="' + key + '"]');
+  if (chip) chip.classList.add('sel');
+  panelName.textContent = s.name;
+  panelName.style.color = s.color;
+  panelTag.textContent = (s.type === 'main' ? '主国' : '邦国 · 附属资源') + (key === myCountry ? ' · 你的主国' : '');
+  panelTag.className = s.type === 'main' ? 'p-tag t-main' : 'p-tag t-vass';
+  panelHint.style.display = 'none';
+  panelStats.innerHTML = '';
+  panelRes.style.display = '';
+  if (s.type === 'main') {
+    const parts = Object.keys(DOM_CN).map(d => {
+      const pc = domBonusPct(key, d);
+      return DOM_CN[d] + ' ' + s.stats[DOM_CN[d]] + '（' + (pc > 0 ? '+' : '') + pc + '%）';
+    });
+    panelRes.innerHTML = '<b>' + s.name + ' 兵种专长：</b>' + parts.join(' · ') +
+      (key === myCountry ? '<br><span style="color:#93a7c2;font-size:13px">该国部队用对应兵种出击时，按上面百分比增减伤害</span>' : '');
+  } else {
+    panelRes.innerHTML = '<b>资源：</b>' + s.resource +
+      '　<span style="color:#8fe3a8">占领后每日产出 ¥' + s.inc + '</span>';
+  }
+  const own1 = isDuel() && taken[key] && taken[key] !== turn + 1;
+  const df = taken[key]
+    ? '防守 ' + Math.max(0, defOf(key)) + (own1 ? ' · 土地已归对方所统' : ' · 土地已归你所统')
+    : '防守 ' + Math.max(0, defOf(key)) + (defOf(key) <= 0 ? '（防守归零则被攻克）' : '');
+  panelRes.innerHTML += '<br><span style="color:#93a7c2;font-size:13px">⚔ ' + df + '</span>';
+  if (key === myCountry) {
+    const bx = [];
+    if (atkBonus) bx.push('攻击 +' + atkBonus);
+    if (own.fort) bx.push('防守 +' + own.fort);
+    if (critBonus) bx.push('暴击 +' + critBonus + '%');
+    if (regenBonus) bx.push('回血 +' + regenBonus);
+    if (salvageBonus) bx.push('缴获 +' + salvageBonus + '%');
+    const land = landIncome(), item = baseIncome() - land;
+    const parts = [];
+    if (land) parts.push('领地 ' + land);
+    if (item) parts.push('道具 ' + item);
+    if (incomeBonus) parts.push('加成 ' + incomeBonus);
+    panelRes.innerHTML += '<br><span style="color:#ffd166;font-size:13px">★ 加成：' +
+      (bx.length ? bx.join(' · ') : '暂无') + '</span><br>' +
+      '<span style="color:#93a7c2;font-size:13px">每日产出 ¥' + (baseIncome() + incomeBonus) +
+      (parts.length ? '（' + parts.join(' + ') + '）' : '（无固定收入，去征服邦国或购买道具）') + '</span>';
+  }
+  panelDesc.textContent = s.desc;
+}
+
+const chipsEl = document.getElementById('chips');
+chipsEl.innerHTML = ORDER.map(key => {
+  const s = STATES[key];
+  if (!s) return '';
+  const div = key === 'iceland' ? '<span class="chip div">— 邦 国 —</span>' : '';
+  return div + '<span class="chip" data-k="' + key + '">' + s.name + '</span>';
+}).join('');
+
+const defState = {};
+const taken = {};
+const baseDef = k => (STATES[k].type === 'main' ? 12 : 6);
+const defOf = k => defState[k] == null ? defState[k] = baseDef(k) : defState[k];
+let armed = null;
+
+function toast(m) {
+  const el = document.getElementById('toast');
+  el.textContent = m;
+  el.classList.add('show');
+  clearTimeout(this._tt);
+  this._tt = setTimeout(() => el.classList.remove('show'), 4000);
+}
+function ownerColor(o) {
+  if (!o) return null;
+  const p = players[o - 1];
+  return p && p.country ? STATES[p.country].color : null;
+}
+function conquer(k) {
+  taken[k] = gameMode === 'solo' ? 1 : turn + 1;
+  defState[k] = baseDef(k);
+  SND.conquer(STATES[k].type === 'main');
+  syncMainMap();
+  checkWin();
+}
+function syncMainMap() {
+  Object.keys(taken).forEach(k => {
+    if (!taken[k]) return;
+    const col = ownerColor(taken[k]);
+    const p = landG.querySelector('[data-k="' + k + '"]');
+    if (p && col) p.style.fill = col;
+    const c = document.querySelector('.chip[data-k="' + k + '"]');
+    if (c) c.classList.add('taken');
+  });
+}
+function hideFireUI() {
+  armed = null;
+  document.getElementById('fireUI').classList.add('hidden');
+}
+function showFireUI(u) {
+  document.getElementById('fireUITxt').textContent = '已选定 ' + ITEMS[u.k].name + '：点击欧洲地图上的国家开火';
+  document.getElementById('fireUI').classList.remove('hidden');
+}
+document.getElementById('fireCancel').addEventListener('click', hideFireUI);
+
+// 音效开关
+const sndBtn = document.getElementById('sndBtn');
+function renderSndBtn() {
+  const off = SND.isMuted();
+  sndBtn.classList.toggle('off', off);
+  sndBtn.textContent = off ? '♪̷' : '♪';
+  sndBtn.title = off ? '音效已关闭（点击开启）' : '音效已开启（点击关闭）';
+}
+sndBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  SND.toggle();
+  renderSndBtn();
+  if (!SND.isMuted()) SND.tick();
+});
+renderSndBtn();
+
+function updateOpMode() {
+  const on = location.href.toLowerCase().indexOf('operatormode') >= 0;
+  document.getElementById('opMoney').classList.toggle('hidden', !on);
+}
+document.getElementById('opSet').addEventListener('click', () => {
+  const v = parseFloat(document.getElementById('opInput').value);
+  if (isNaN(v) || v < 0) { toast('请输入有效的非负金额'); return; }
+  money = v;
+  updateMoneyUI();
+  toast('金额已设为 ¥' + money);
+});
+window.addEventListener('hashchange', updateOpMode);
+updateOpMode();
+
+function diploLocked(x) {
+  // 你占领的非主国：AI 只能通过谈判买走，不能直接打掉
+  return isAIPlayer(turn) && taken[x] === 1 && STATES[x].type !== 'main';
+}
+function fireAt(k) {
+  if (!armed || gameOver) return false;
+  if (k === myCountry || (taken[k] && taken[k] === (gameMode === 'solo' ? 1 : turn + 1))) {
+    SND.deny();
+    toast('不能打击自己或己方已占领的土地');
+    return false;
+  }
+  if (diploLocked(k)) { SND.deny(); toast(STATES[k].name + ' 归你所有，AI 只能出价谈判'); return false; }
+  const st = STATES[k];
+  const u = armed;
+  const it = ITEMS[u.k];
+  const mineNum = gameMode === 'solo' ? 1 : turn + 1;
+  const before = Math.max(0, defOf(k));
+  const isCrit = Math.random() < ((it.crit || 0) + critBonus) / 100;
+  let per = it.atk + atkBonus;
+  if (isCrit) per *= 2;
+  const shots = it.shots || 1;
+  const dom = it.dom || 'army';
+  const domPct = domBonusPct(myCountry, dom);
+  const dmg = Math.max(1, Math.round(per * shots * (1 + domPct / 100)));
+  defState[k] = Math.max(0, defState[k] - dmg);
+  let msg = it.name + (shots > 1 ? ' ×' + shots + ' 连射' : '') + ' 命中 ' + st.name +
+    '：驻防 ' + before + ' → ' + Math.max(0, defOf(k)) + (isCrit ? '（暴击！）' : '') +
+    (domPct ? '（' + DOM_CN[dom] + '系 ' + (domPct > 0 ? '+' : '') + domPct + '%）' : '');
+  if (it.splash) {
+    const pool = Object.keys(STATES).filter(x => x !== myCountry && x !== k && taken[x] !== mineNum && !diploLocked(x));
+    const hits = Math.min(2, pool.length);
+    for (let i = 0; i < hits; i++) {
+      const tk = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      const sd = Math.max(1, Math.round(dmg * it.splash));
+      defState[tk] = Math.max(0, defState[tk] - sd);
+      SND.splash();
+      msg += '，溅射 ' + STATES[tk].name + ' -' + sd;
+      if (defState[tk] <= 0 && taken[tk] !== mineNum) {
+        const sb = STATES[tk].type === 'main' ? 1200 : 400;
+        money += sb;
+        msg += '（' + STATES[tk].name + ' 被攻克！+¥' + sb + '）';
+        conquer(tk);
+      }
+    }
+  }
+  if (Math.random() < ((it.loot || 0) + salvageBonus) / 100) {
+    const gold = 50 + dmg * 10;
+    money += gold;
+    SND.loot();
+    msg += '，缴获 ¥' + gold;
+  }
+  if (defState[k] <= 0 && taken[k] !== mineNum) {
+    const bonus = st.type === 'main' ? 1200 : 400;
+    money += bonus;
+    msg += '，' + st.name + (taken[k] ? ' 易主！' : ' 被攻克！') + '奖励 ¥' + bonus;
+    conquer(k);
+  }
+  u.lastShot = inGameDay;
+  SND.fire(it.atk, dom, isCrit);
+  toast(msg);
+  hideFireUI();
+  updateMoneyUI();
+  renderPlayerInfo();
+  select(k);
+  return true;
+}
+landG.addEventListener('click', e => {
+  const t = e.target.closest('[data-k]');
+  if (!t) return;
+  const k = t.getAttribute('data-k');
+  if (isDuel() && gameOver) return;
+  if (armed) { netTryFire(k); return; }
+  select(k);
+});
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => select(c.dataset.k));
+});
+
+const TURN_SEC = 30;
+const MODE_N = { solo: 1, duo: 2, trio: 3 };
+const PLAYER_COLORS = ['#ffc76b', '#7fe3f7', '#a8c2ff'];
+let gameMode = 'menu';        // menu | solo | duo | trio | ai
+let nPlayers = 1;             // 本局玩家数
+let nAIs = 1;                 // AI 模式下的 AI 数量（最多 2）
+let aiDiff = 3;               // AI 难度 1-5
+let aiRunId = 0;              // AI 行动序列的令牌，用于中断
+let aiEnding = false;         // AI 正在自行结束回合
+let aiTurnAt = 0;             // AI 回合开始时间，用于超时兜底
+const AI_TURN_MAX = 18000;    // AI 回合最长 18 秒，超时强制交还玩家
+let turn = 0;                 // 当前行动方：0 = P1，1 = P2，2 = P3
+let turnLeft = TURN_SEC;
+let turnEndAt = 0;
+let gameOver = false;
+let pickIdx = 0;
+let players = [];
+let soloMark = 0;
+
+let money = 200;
+let inGameDay = 1;
+let myCountry = null;
+
+const ITEMS = {
+  mine:     { name: '矿场',     price: 100,  icon: '⛏', desc: '每天产出 ¥100',          common: true, hp: 0, atk: 0, inc: 100 },
+  camp:     { name: '采掘营地', price: 300,  icon: '🏕', desc: '每天产出 ¥200',          common: true, hp: 0, atk: 0, inc: 200 },
+  caravan:  { name: '商队',     price: 600,  icon: '🐫', desc: '每天产出 ¥350',          common: true, hp: 0, atk: 0, inc: 350 },
+  forge:    { name: '兵工厂',   price: 1500, icon: '🏭', desc: '全军攻击 +1（每局限购一次）',   common: true, hp: 0, atk: 0, fx: 'power',  v: 1 },
+  radar:    { name: '雷达站',   price: 1200, icon: '📡', desc: '全军暴击率 +12%（可叠加）', common: true, hp: 0, atk: 0, fx: 'crit',   v: 12 },
+  hospital: { name: '野战医院', price: 900,  icon: '🚑', desc: '每天为所有单位恢复 1 血（可叠加）', common: true, hp: 0, atk: 0, fx: 'regen', v: 1 },
+  fort:     { name: '堡垒',     price: 100,  icon: '🏰', desc: '每座为你的主国增加 2 点防守（可叠加）', common: true, hp: 0, atk: 0, fx: 'def', v: 2 },
+  ltank:    { name: '轻型坦克', price: 500,  icon: '🪖', desc: '装甲突击',              common: true, hp: 3, atk: 3, unit: true, dom: 'army' },
+  scout:    { name: '侦察鹰',   price: 400,  icon: '🦅', desc: '低空猎杀 · 暴击 40% · 缴获 20%', common: true, hp: 2, atk: 2, crit: 40, loot: 20, unit: true, dom: 'air' },
+  gren:     { name: '榴弹炮',   price: 3000, icon: '💣', desc: '范围轰击 · 溅射 2 个国家 60%', common: true, hp: 2, atk: 5, splash: 0.6, unit: true, dom: 'army' },
+  armor:    { name: '重装坦克', price: 2000, icon: '🛡', desc: '重甲碾压',              only: 'turkey', hp: 5, atk: 6, unit: true, dom: 'army' },
+  dblt:     { name: '双管坦克', price: 1000, icon: '⚔', desc: '双管齐射 · 一日双发',    only: 'turkey', hp: 3, atk: 3, shots: 2, unit: true, dom: 'army' },
+  nuclek:   { name: '核能坦克', price: 5000, icon: '☢', desc: '核能动力 · 溅射 50% · 缴获 30%', only: 'turkey', hp: 3, atk: 8, splash: 0.5, loot: 30, unit: true, dom: 'army' },
+  janissary:{ name: '苏丹卫队', price: 2500, icon: '🗡', desc: '近卫精锐 · 高攻高血',    only: 'turkey', hp: 6, atk: 7, unit: true, dom: 'army' },
+  ram:      { name: '攻城撞锤', price: 1800, icon: '🔨', desc: '连续撞击 · 一日双发',    only: 'turkey', hp: 4, atk: 4, shots: 2, unit: true, dom: 'army' },
+  cruise:   { name: '巡航机',   price: 1000, icon: '🛩', desc: '高空巡航',              only: 'germany', hp: 2, atk: 4, unit: true, dom: 'air' },
+  recon:    { name: '侦察机',   price: 800,  icon: '🛰', desc: '雷达指引 · 暴击 50% · 缴获 25%', only: 'germany', hp: 2, atk: 3, crit: 50, loot: 25, unit: true, dom: 'air' },
+  fight:    { name: '战斗机',   price: 1500, icon: '✈', desc: '制空缠斗',              only: 'germany', hp: 3, atk: 5, unit: true, dom: 'air' },
+  bomber:   { name: '轰炸机',   price: 3500, icon: '🕊', desc: '地毯轰炸 · 溅射 2 国 60%', only: 'germany', hp: 4, atk: 6, splash: 0.6, unit: true, dom: 'air' },
+  missile:  { name: '导弹飞机', price: 5000, icon: '🚀', desc: '导弹齐射 · 溅射 40%',    only: 'germany', hp: 4, atk: 9, splash: 0.4, unit: true, dom: 'air' },
+  carrier:  { name: '航空母舰', price: 5000, icon: '⚓', desc: '海上机场 · 可装鱼雷',    only: 'uk', hp: 7, atk: 8, unit: true, dom: 'navy' },
+  destroyer:{ name: '驱逐舰',   price: 1200, icon: '⛵', desc: '快速袭扰',              only: 'uk', hp: 4, atk: 4, unit: true, dom: 'navy' },
+  sub:      { name: '潜艇',     price: 1800, icon: '🐟', desc: '水下奇袭 · 暴击 40% · 缴获 30%', only: 'uk', hp: 3, atk: 5, crit: 40, loot: 30, unit: true, dom: 'navy' },
+  stealth:  { name: '无声战舰', price: 2000, icon: '🚢', desc: '隐踪匿迹 · 暴击 25%',    only: 'uk', hp: 3, atk: 4, crit: 25, unit: true, dom: 'navy' },
+  battleship:{ name: '战列舰',  price: 3000, icon: '🏴', desc: '钢铁巨炮 · 一日双发',    only: 'uk', hp: 7, atk: 5, shots: 2, unit: true, dom: 'navy' },
+  torpedo:  { name: '鱼雷',     price: 300,  icon: '💥', desc: '需安装在航母 · 无人格',  only: 'uk', hp: 0, atk: 0, unit: true, dom: 'navy' },
+};
+const DOM_CN = { army: '陆军', air: '空军', navy: '海军' };
+const DOM_BASE = 70;
+// 主国在某一兵种上的固有优势：高于 70 记为加成，低于 70 记为劣势
+function domBonusPct(country, dom) {
+  const st = STATES[country];
+  if (!st || !st.stats) return 0;
+  const v = st.stats[DOM_CN[dom]];
+  if (!v) return 0;
+  return Math.round((v - DOM_BASE) / 2);
+}
+function freshOwn() { const o = {}; Object.keys(ITEMS).forEach(k => o[k] = 0); return o; }
+function freshVOwn() { const v = {}; Object.keys(VASSAL_ITEMS).forEach(k => v[k] = 0); return v; }
+function freshDeployed() { const d = {}; DEPLOYABLE.forEach(k => d[k] = []); return d; }
+let own = freshOwn();
+
+const dayTag = document.getElementById('dayTag');
+const hudMoney = document.getElementById('hudMoney');
+const shopMoney = document.getElementById('shopMoney');
+const ownCounts = document.getElementById('ownCounts');
+const shopTabs = document.getElementById('shopTabs');
+const shopView = document.getElementById('shopView');
+const MAINS = ['turkey', 'germany', 'uk'];
+let shopSel = 'common';
+
+const VASSAL_ITEMS = {
+  portugal:       [ { name: '大航海罗盘',   icon: '🧭', desc: '据守航线',           price: 250,  fx: 'income',   v: 130 },
+                    { name: '私掠特许状',   icon: '🏴', desc: '作战缴获概率提升',   price: 600,  fx: 'salvage',  v: 25 } ],
+  spain:          [ { name: '弗拉门戈战歌', icon: '🎸', desc: '士气高昂',           price: 400,  fx: 'power',    v: 1 },
+                    { name: '新大陆白银锭', icon: '🥈', desc: '购入立刻入库',       price: 900,  fx: 'gold',     v: 1200 } ],
+  france:         [ { name: '香槟库存',     icon: '🍷', desc: '每晚产出 ¥150',      price: 600,  fx: 'income',   v: 150 },
+                    { name: '香水帝国',     icon: '🧴', desc: '每晚产出 ¥260',      price: 1200, fx: 'income',   v: 260 } ],
+  ireland:        [ { name: '四叶草护符',   icon: '🍀', desc: '每晚产出 ¥100',      price: 350,  fx: 'income',   v: 100 },
+                    { name: '矮妖金窖',     icon: '🍫', desc: '购入立刻入库',       price: 500,  fx: 'gold',     v: 700 } ],
+  netherlands:    [ { name: '郁金香资本',   icon: '🌷', desc: '每晚产出 ¥200',      price: 800,  fx: 'income',   v: 200 },
+                    { name: '期权交易所',   icon: '📈', desc: '每晚产出 ¥320',      price: 1500, fx: 'income',   v: 320 } ],
+  belgium:        [ { name: '安特卫普钻石', icon: '💎', desc: '每晚产出 ¥140',      price: 300,  fx: 'income',   v: 140 },
+                    { name: '煤炭暗渠',     icon: '🪨', desc: '全军攻击 +1',        price: 400,  fx: 'power',    v: 1 } ],
+  switzerland:    [ { name: '瑞士精密钟表', icon: '🕰', desc: '每晚产出 ¥250',      price: 1000, fx: 'income',   v: 250 },
+                    { name: '中立金库',     icon: '🏦', desc: '购入立刻入库',       price: 800,  fx: 'gold',     v: 1000 } ],
+  italy:          [ { name: '达芬奇机关',   icon: '🎯', desc: '全军攻击 +2',        price: 450,  fx: 'power',    v: 2 },
+                    { name: '歌剧院产业链', icon: '🎭', desc: '每晚产出 ¥200',      price: 900,  fx: 'income',   v: 200 } ],
+  denmark:        [ { name: '黄油储备',     icon: '🧈', desc: '每晚产出 ¥100',      price: 300,  fx: 'income',   v: 100 },
+                    { name: '柴油引擎',     icon: '⚙', desc: '全军攻击 +1',        price: 350,  fx: 'power',    v: 1 } ],
+  norway:         [ { name: '维京战船图纸', icon: '🛶', desc: '全军攻击 +2',        price: 700,  fx: 'power',    v: 2 },
+                    { name: '峡湾水电站',   icon: '💧', desc: '每晚产出 ¥200',      price: 850,  fx: 'income',   v: 200 } ],
+  sweden:         [ { name: '北欧战斧',     icon: '🪓', desc: '全军攻击 +2',        price: 650,  fx: 'power',    v: 2 },
+                    { name: '军工联合体',   icon: '🔩', desc: '每晚产出 ¥230',      price: 900,  fx: 'income',   v: 230 } ],
+  finland:        [ { name: '萨米驯鹿',     icon: '🦌', desc: '每晚产出 ¥120',      price: 400,  fx: 'income',   v: 120 },
+                    { name: '极光观测站',   icon: '🌌', desc: '全军暴击率 +15%',    price: 700,  fx: 'crit',     v: 15 } ],
+  poland:         [ { name: '琥珀贸易网',   icon: '🟡', desc: '每晚产出 ¥130',      price: 350,  fx: 'income',   v: 130 },
+                    { name: '维利奇卡盐矿', icon: '🧂', desc: '购入立刻入库',       price: 600,  fx: 'gold',     v: 800 } ],
+  czech:          [ { name: '皮尔森啤酒',   icon: '🍺', desc: '每晚产出 ¥120',      price: 280,  fx: 'income',   v: 120 },
+                    { name: '战时工业',     icon: '🏗', desc: '全军攻击 +2',        price: 800,  fx: 'power',    v: 2 } ],
+  austria:        [ { name: '维也纳灵光',   icon: '🎼', desc: '全军攻击 +3',        price: 1200, fx: 'power',    v: 3 },
+                    { name: '萨赫蛋糕工坊', icon: '🍰', desc: '每晚产出 ¥240',      price: 1000, fx: 'income',   v: 240 } ],
+  hungary:        [ { name: '辣椒火药',     icon: '🌶', desc: '全军攻击 +2',        price: 500,  fx: 'power',    v: 2 },
+                    { name: '托卡伊酒窖',   icon: '🍾', desc: '每晚产出 ¥180',      price: 750,  fx: 'income',   v: 180 } ],
+  ukraine:        [ { name: '向日葵能源',   icon: '🌻', desc: '每晚产出 ¥150',      price: 600,  fx: 'income',   v: 150 },
+                    { name: '切尔诺泽姆农场', icon: '🌾', desc: '每晚产出 ¥200',    price: 800,  fx: 'income',   v: 200 } ],
+  belarus:        [ { name: '马铃薯储备',   icon: '🥔', desc: '每晚产出 ¥150',      price: 450,  fx: 'income',   v: 150 },
+                    { name: '波罗的海明珠', icon: '🫧', desc: '购入立刻入库',       price: 450,  fx: 'gold',     v: 600 } ],
+  jj:             [ { name: '稀有合金铸件', icon: '⚙', desc: '全军攻击 +3',        price: 900,  fx: 'power',    v: 3 },
+                    { name: '波罗的海造船坞', icon: '🚢', desc: '每天全军恢复 1 血', price: 700,  fx: 'regen',    v: 1 } ],
+  serbia:         [ { name: '巴尔干铁拳',   icon: '🥋', desc: '全军攻击 +2',        price: 550,  fx: 'power',    v: 2 },
+                    { name: '铜矿特许权',   icon: '🟤', desc: '每晚产出 ¥200',      price: 700,  fx: 'income',   v: 200 } ],
+  greece:         [ { name: '特洛伊木马',   icon: '🏛', desc: '全军攻击 +2',        price: 700,  fx: 'power',    v: 2 },
+                    { name: '橄榄油 consortium', icon: '🫒', desc: '每晚产出 ¥190',  price: 700,  fx: 'income',   v: 190 } ],
+  romania:        [ { name: '特兰西瓦尼亚之灵', icon: '🧛', desc: '全军攻击 +3',    price: 800,  fx: 'power',    v: 3 },
+                    { name: '喀尔巴阡石油', icon: '🛢', desc: '每晚产出 ¥260',      price: 1000, fx: 'income',   v: 260 } ],
+  russia:         [ { name: '西伯利亚雄师', icon: '🐻', desc: '全军攻击 +5',        price: 1500, fx: 'power',    v: 5 },
+                    { name: '圣彼得堡商路', icon: '🚂', desc: '每晚产出 ¥300',      price: 1200, fx: 'income',   v: 300 } ],
+};
+let vOwn = freshVOwn();
+let incomeBonus = 0;
+let atkBonus = 0;
+let critBonus = 0;
+let regenBonus = 0;
+let salvageBonus = 0;
+const goldBought = {};
+const onceBought = {};
+function goldItemOf(key) {
+  if (key.indexOf('v:') === 0) {
+    const p = key.slice(2).split(':');
+    const arr = VASSAL_ITEMS[p[0]];
+    return arr ? arr[parseInt(p[1], 10)] : null;
+  }
+  return ITEMS[key] || null;
+}
+function pfx() { return gameMode === 'solo' ? 0 : turn; }
+function goldKey(key) { return pfx() + '|' + key; }
+function goldLocked(key) {
+  const it = goldItemOf(key);
+  if (!it || it.fx !== 'gold') return false;
+  return goldBought[goldKey(key)] === inGameDay;
+}
+const ONCE_FX = ['power', 'income'];   // 每局仅可购入一次的加成类型
+function onceKey(fx) { return pfx() + '|' + fx; }
+function onceLocked(key) {
+  const it = goldItemOf(key);
+  if (!it || ONCE_FX.indexOf(it.fx) < 0) return false;
+  return !!onceBought[onceKey(it.fx)];
+}
+function lockTextOf(key) {
+  if (goldLocked(key)) return '今日已购';
+  if (onceLocked(key)) return '本局已购';
+  return '';
+}
+function vassalPrice(slug, i) { const it = VASSAL_ITEMS[slug][i]; return taken[slug] ? it.price : it.price * 2; }
+const TAB_ORDER = ['common'].concat(MAINS).concat(Object.keys(VASSAL_ITEMS));
+
+// 已占领邦国带来的每日产出
+function landIncome() {
+  const mine = gameMode === 'solo' ? 1 : turn + 1;
+  if (!mine) return 0;
+  let s = 0;
+  for (const k in taken) {
+    if (taken[k] === mine && STATES[k] && STATES[k].inc && STATES[k].type === 'vassal') s += STATES[k].inc;
+  }
+  return s;
+}
+function baseIncome() {
+  return landIncome() +
+    Object.keys(ITEMS).reduce((s, k) => s + (ITEMS[k].inc || 0) * own[k], 0);
+}
+function fmtY(n) { return '¥ ' + n; }
+function fxCn(it) {
+  if (it.fx === 'income') return '每晚额外产出 ¥' + it.v + '（每局限购一次）';
+  if (it.fx === 'power') return '全军攻击 +' + it.v + '（每局限购一次）';
+  if (it.fx === 'crit') return '全军暴击率 +' + it.v + '%';
+  if (it.fx === 'regen') return '每天为所有单位恢复 ' + it.v + ' 血';
+  if (it.fx === 'def') return '你的主国防守 +' + it.v;
+  if (it.fx === 'salvage') return '作战缴获概率 +' + it.v + '%';
+  if (it.fx === 'gold') return '购入立即获得 ¥' + it.v + '（每天限一次）';
+  return '';
+}
+function mechCn(it) {
+  const a = [];
+  if (it.atk) a.push('攻 ' + it.atk + (it.shots ? '×' + it.shots : ''));
+  if (it.hp) a.push('血 ' + it.hp);
+  if (it.crit) a.push('暴击 ' + it.crit + '%');
+  if (it.splash) a.push('溅射 ' + Math.round(it.splash * 100) + '%');
+  if (it.loot) a.push('缴获 ' + it.loot + '%');
+  return a.join(' · ');
+}
+function goodHtml(title, it, price, buyKey, fxLine, x2, lockText) {
+  const locked = !!lockText;
+  return '<div class="good">' +
+    '<div class="g-icon">' + it.icon + '</div>' +
+    '<div class="g-info"><b>' + title + '</b>' +
+    '<span>' + it.desc + '</span>' +
+    (fxLine ? '<span class="fxline">' + fxLine + '</span>' : '') +
+    '<span>价格 ' + fmtY(price) + (x2 ? '（原价 ' + fmtY(it.price) + '，双倍）' : '') + '</span></div>' +
+    '<button class="goldbtn" data-buy="' + buyKey + '" data-price="' + price + '"' +
+    (locked ? ' data-lock="1" disabled' : '') + '>' + (locked ? lockText : '购买') + '</button></div>';
+}
+function renderShop() {
+  shopTabs.innerHTML = TAB_ORDER.map(k => {
+    const label = k === 'common' ? '通用补给' : STATES[k].name;
+    const extra = (k === myCountry) ? ' mine' : '';
+    return '<span class="tab' + (k === shopSel ? ' sel' : '') + extra + '" data-tab="' + k + '">' + label + '</span>';
+  }).join('');
+  renderView();
+}
+function renderView() {
+  let goods = '<div class="good empty">请在上方选择一个国家，查看它的特产与军备。</div>';
+  if (shopSel === 'common' || MAINS.indexOf(shopSel) >= 0) {
+    goods = Object.keys(ITEMS)
+      .filter(k => shopSel === 'common' ? ITEMS[k].common : ITEMS[k].only === shopSel)
+      .map(k => {
+        const it = ITEMS[k];
+        const lines = [];
+        const m = mechCn(it);
+        if (m) lines.push('属性：' + m);
+        if (it.fx) lines.push('功能：' + fxCn(it));
+        return goodHtml(it.name, it, it.price, k, lines.join(' ｜ '), false, lockTextOf(k));
+      }).join('') || goods;
+  } else if (VASSAL_ITEMS[shopSel]) {
+    goods = VASSAL_ITEMS[shopSel].map((it, i) => {
+      const key = 'v:' + shopSel + ':' + i;
+      return goodHtml(STATES[shopSel].name + ' · ' + it.name, it, vassalPrice(shopSel, i),
+        key, '功能：' + fxCn(it), !taken[shopSel], lockTextOf(key));
+    }).join('');
+  }
+  shopView.innerHTML = goods;
+}
+shopTabs.addEventListener('click', e => {
+  const t = e.target.closest('[data-tab]');
+  if (!t) return;
+  shopSel = t.getAttribute('data-tab');
+  renderShop();
+  updateMoneyUI();
+});
+let totalItems = 0;
+function updateMoneyUI() {
+  hudMoney.textContent = fmtY(money);
+  shopMoney.textContent = fmtY(money);
+  const owned = Object.keys(own).filter(k => own[k] > 0)
+    .map(k => ITEMS[k].name + ' × ' + own[k]);
+  const vowns = Object.keys(vOwn).filter(k => vOwn[k] > 0);
+  if (vowns.length) owned.push('邦国道具 ×' + vowns.reduce((a, k) => a + vOwn[k], 0));
+  ownCounts.textContent = owned.length ? owned.join(' · ') : '尚未拥有任何单位';
+  const bx = [];
+  if (atkBonus) bx.push('攻击 +' + atkBonus);
+  if (own.fort) bx.push('防守 +' + own.fort);
+  if (critBonus) bx.push('暴击 +' + critBonus + '%');
+  if (regenBonus) bx.push('回血 +' + regenBonus);
+  if (salvageBonus) bx.push('缴获 +' + salvageBonus + '%');
+  bx.push('每日产出 ¥' + (baseIncome() + incomeBonus));
+  document.getElementById('shopBonus').textContent = '当前加成：' + bx.join(' · ');
+  document.querySelectorAll('#shopOv [data-buy]').forEach(b => {
+    if (b.getAttribute('data-lock') === '1') { b.disabled = true; return; }
+    b.disabled = money < (b.getAttribute('data-price') === null ? 0 : parseFloat(b.getAttribute('data-price')));
+  });
+}
+renderShop();
+updateMoneyUI();
+
+function buyItem(buy) {
+  if (goldLocked(buy) || onceLocked(buy)) return false;
+  if (buy.indexOf('v:') === 0) {
+    const parts = buy.slice(2).split(':');
+    const slug = parts[0], idx = parseInt(parts[1], 10);
+    const p = vassalPrice(slug, idx);
+    if (money < p) return false;
+    money -= p;
+    vOwn[slug] += 1;
+    goldBought[goldKey(buy)] = inGameDay;
+    applyFx(VASSAL_ITEMS[slug][idx]);
+  } else {
+    const k = buy;
+    const p = ITEMS[k].price;
+    if (money < p) return false;
+    money -= p;
+    own[k] += 1;
+    goldBought[goldKey(buy)] = inGameDay;
+    if (ITEMS[k].fx) applyFx(ITEMS[k]);
+  }
+  renderShop();
+  updateMoneyUI();
+  SND.buy();
+  return true;
+}
+document.getElementById('shopOv').addEventListener('click', e => {
+  const btn = e.target.closest('[data-buy]');
+  if (!btn) return;
+  const buy = btn.getAttribute('data-buy');
+  if (goldLocked(buy)) {
+    toast('「' + goldItemOf(buy).name + '」今天已购入，明天再来');
+    return;
+  }
+  if (onceLocked(buy)) {
+    toast('「' + goldItemOf(buy).name + '」' + (goldItemOf(buy).fx === 'power' ? '攻击加成' : '每晚产出') + '类商品每局限购一次');
+    return;
+  }
+  if (netIsOnline()) {
+    if (!netMyTurn()) { toast('还没轮到你行动'); return; }
+    if (!netIsHost()) { netSend({ t: 'act', a: { k: 'buy', v: buy } }); return; }
+    if (!buyItem(buy)) return;
+    netSync();
+    return;
+  }
+  buyItem(buy);
+});
+function applyFx(it) {
+  if (ONCE_FX.indexOf(it.fx) >= 0) onceBought[onceKey(it.fx)] = true;
+  if (it.fx === 'income') incomeBonus += it.v;
+  else if (it.fx === 'power') atkBonus += it.v;
+  else if (it.fx === 'crit') critBonus += it.v;
+  else if (it.fx === 'regen') regenBonus += it.v;
+  else if (it.fx === 'def') { if (myCountry) defState[myCountry] = defOf(myCountry) + it.v; }
+  else if (it.fx === 'salvage') salvageBonus += it.v;
+  else if (it.fx === 'gold') { money += it.v; }
+  toast('已购入 ' + it.name + '（' + it.desc + '）');
+}
+function healAll(n) {
+  let healed = 0;
+  DEPLOYABLE.forEach(k => deployed[k].forEach(u => {
+    const mx = ITEMS[k].hp;
+    if (mx > 0 && u.hp < mx) { u.hp = Math.min(mx, u.hp + n); healed++; }
+  }));
+  if (healed) { toast('野战医院为 ' + healed + ' 个单位恢复了 ' + n + ' 血'); redrawDeployed(); }
+}
+/* ===================== 模式 / 回合 / 胜负 ===================== */
+function isDuel() { return gameMode === 'duo' || gameMode === 'trio' || gameMode === 'ai' || gameMode === 'online'; }
+function isAIPlayer(i) { const p = players[i]; return !!(p && p.isAI); }
+
+function newPlayer(i) {
+  return {
+    i: i, country: null, money: 200,
+    own: freshOwn(), vOwn: freshVOwn(), deployed: freshDeployed(),
+    incomeBonus: 0, atkBonus: 0, critBonus: 0, regenBonus: 0, salvageBonus: 0,
+    ended: false, turnDay: 1, isAI: false, aiLv: 0,
+    out: false, outBy: 0, outLand: 0, name: ''
+  };
+}
+function loadPlayer(i) {
+  const p = players[i];
+  if (!p) return;
+  money = p.money; own = p.own; vOwn = p.vOwn; deployed = p.deployed;
+  incomeBonus = p.incomeBonus; atkBonus = p.atkBonus; critBonus = p.critBonus;
+  regenBonus = p.regenBonus; salvageBonus = p.salvageBonus;
+  myCountry = p.country;
+}
+function savePlayer() {
+  const p = players[turn];
+  if (!p) return;
+  p.money = money; p.own = own; p.vOwn = vOwn; p.deployed = deployed;
+  p.incomeBonus = incomeBonus; p.atkBonus = atkBonus; p.critBonus = critBonus;
+  p.regenBonus = regenBonus; p.salvageBonus = salvageBonus;
+  // 还没选主国时 myCountry 是空的，这时不能回写，否则会把选好的主国抹掉
+  if (myCountry) p.country = myCountry;
+}
+function resetWorld() {
+  players = [];
+  for (let i = 0; i < nPlayers; i++) players.push(newPlayer(i));
+  turn = 0; gameOver = false; pickIdx = 0;
+  Object.keys(defState).forEach(k => delete defState[k]);
+  Object.keys(STATES).forEach(k => {
+    taken[k] = 0;
+    const p = landG.querySelector('[data-k="' + k + '"]');
+    if (p) p.style.fill = STATES[k].color;
+    const c = document.querySelector('.chip[data-k="' + k + '"]');
+    if (c) c.classList.remove('taken');
+  });
+  inGameDay = 1;
+  dayTag.textContent = '第 1 天';
+  hideFireUI();
+  armed = null; selFire = null; placing = null;
+  money = 200; own = freshOwn(); vOwn = freshVOwn(); deployed = freshDeployed();
+  incomeBonus = 0; atkBonus = 0; critBonus = 0; regenBonus = 0; salvageBonus = 0;
+  myCountry = null;
+  aiRunId++; aiEnding = false; aiLockUI(false);
+  goldBoughtReset();
+  document.getElementById('endOv').classList.add('hidden');
+}
+function goldBoughtReset() {
+  Object.keys(goldBought).forEach(k => delete goldBought[k]);
+  Object.keys(onceBought).forEach(k => delete onceBought[k]);
+}
+function countLand(o) {
+  const p = players[o - 1];
+  let n = Object.keys(STATES).filter(k => taken[k] === o).length;
+  if (p && p.country && !taken[p.country]) n += 1;   // 自己的主国尚未被任何人攻陷
+  return n;
+}
+function isOut(i) { const p = players[i]; return !p || !!p.out; }
+function aliveIdx() {
+  const a = [];
+  for (let i = 0; i < nPlayers; i++) if (!isOut(i)) a.push(i);
+  return a;
+}
+function nextAlive(i) {
+  for (let s = 1; s <= nPlayers; s++) { const nx = (i + s) % nPlayers; if (!isOut(nx)) return nx; }
+  return -1;
+}
+function eliminate(i, by) {
+  const p = players[i];
+  if (!p || p.out) return;
+  p.out = true;
+  p.outBy = by;
+  p.outLand = countLand(i + 1);
+  DEPLOYABLE.forEach(k => { if (p.deployed[k]) p.deployed[k].length = 0; });
+  Object.keys(taken).forEach(k => {
+    if (taken[k] === i + 1) { taken[k] = 0; defState[k] = baseDef(k); }
+  });
+  if (p.isAI) aiRunId++;
+  if (tradeWait) { tradeWait = false; document.getElementById('tradeOv').classList.add('hidden'); }
+  syncMainMap();
+  // 被打掉的就是当前行动者：立刻把回合交给还在场的人，避免卡死
+  if (turn === i && !gameOver) {
+    aiEnding = true;
+    endTurn(false);
+    aiEnding = false;
+  }
+}
+function checkWin() {
+  if (gameMode === 'solo' || gameOver) { renderPlayerInfo(); return; }
+  let msg = '';
+  for (let i = 0; i < nPlayers; i++) {
+    const p = players[i];
+    if (!p || p.out || !p.country) continue;
+    if (taken[p.country] && taken[p.country] !== i + 1) {
+      const by = taken[p.country] - 1;
+      eliminate(i, by);
+      SND.eliminate();
+      msg = 'P' + (i + 1) + ' 的主国 ' + STATES[p.country].name + ' 被 P' + (by + 1) + ' 攻陷，P' + (i + 1) + ' 出局';
+    }
+  }
+  if (msg) toast(msg);
+  const alive = aliveIdx();
+  // ai 模式下你只有 P1：被淘汰即本局结束；duo/trio 本地玩家操控全部 P，继续打剩下的
+  if (gameMode === 'ai' && isOut(0)) {
+    finishGame(-2, msg + (alive.length ? '，你已出局' : '，全员出局'));
+    return;
+  }
+  if (alive.length <= 1) {
+    finishGame(alive.length ? alive[0] : -1, msg + (alive.length ? '，成为最后的幸存者' : '，全员出局'));
+    return;
+  }
+  if (msg) { renderPlayerInfo(); return; }
+  const total = Object.keys(STATES).length;
+  const lands = players.map((p, i) => countLand(i + 1));
+  const sum = lands.reduce((a, b) => a + b, 0);
+  if (sum >= total) {
+    const max = Math.max.apply(null, lands);
+    const top = lands.map((v, i) => v === max ? i : -1).filter(i => i >= 0);
+    if (top.length === 1) finishGame(top[0], '全图占领完毕 · 土地 ' + lands.join(' : '));
+    else finishGame(-1, '全图占领完毕 · 土地 ' + lands.join(' : ') + '（并列）');
+    return;
+  }
+  renderPlayerInfo();
+}
+function finishGame(winner, reason) {
+  gameOver = true;
+  // 胜负音效：联机按自己的座位判定；AI 模式只有 P1 是人类；duo/trio 全部席位都是人类
+  const humanSeat = netIsOnline() ? NET.seat : (gameMode === 'ai' ? 0 : -2);
+  if (humanSeat === -2) { if (winner >= 0) SND.win(); }
+  else if (winner === humanSeat) SND.win(); else SND.lose();
+  if (netIsOnline()) { NET.last = { w: winner, r: reason }; NET.endShown = true; }
+  if (gameMode !== 'solo') savePlayer();
+  hideFireUI();
+  armed = null; selFire = null;
+  const title = document.getElementById('winTitle');
+  if (winner === -2) {
+    title.textContent = '你已出局';
+    title.style.color = '#ff8a8a';
+  } else if (winner < 0) {
+    title.textContent = '平局';
+    title.style.color = '#ffd166';
+  } else {
+    const w = players[winner];
+    title.innerHTML = '<span style="color:' + PLAYER_COLORS[winner] + '">P' + (winner + 1) + ' · ' +
+      STATES[w.country].name + ' 胜利</span>';
+    title.style.color = STATES[w.country].color;
+  }
+  const rows = players.map((p, i) =>
+    'P' + (i + 1) + ' ' + (p.country ? STATES[p.country].name : '—') + (p.isAI ? '（AI ' + p.aiLv + '）' : '') +
+    '：' + (p.out ? '已出局（终局占领 ' + (p.outLand || 0) + ' 国，被 P' + ((p.outBy || 0) + 1) + ' 击败）'
+      : '占领 ' + countLand(i + 1) + ' 国') + ' · ¥' + p.money).join('<br>');
+  document.getElementById('winStats').innerHTML =
+    '结束原因：' + reason + '<br>第 ' + inGameDay + ' 天结束<br>' + rows;
+  document.getElementById('endOv').classList.remove('hidden');
+  renderPlayerInfo();
+  aiLockUI(true);
+  updateTurnUI();
+}
+function playerTag(i) {
+  const p = players[i];
+  if (p && p.isAI) return 'AI ' + p.aiLv;
+  if (netIsOnline()) {
+    if (i === NET.seat) return '你';
+    return (p && p.name) || ('P' + (i + 1) + ' 玩家');
+  }
+  return '玩家';
+}
+function renderPlayerInfo() {
+  const box = document.getElementById('duoInfo');
+  if (!box || gameMode === 'solo') return;
+  savePlayer();
+  box.innerHTML = players.map((p, i) => {
+    const col = p.country ? STATES[p.country].color : '#5c7088';
+    return '<div class="pl' + (i === turn && !gameOver ? ' act' : '') + '">' +
+      '<span class="dotc" style="background:' + col + '"></span>' +
+      '<b style="color:' + PLAYER_COLORS[i] + '">P' + (i + 1) + '</b> ' +
+      (p.country ? STATES[p.country].name : '未选择') +
+      (p.isAI ? ' <em class="aitag">AI ' + p.aiLv + '</em>' :
+        (netIsOnline() ? ' <em class="aitag">' + playerTag(i) + '</em>' : '')) +
+      ' · ¥' + p.money + ' · 占领 ' + countLand(i + 1) + ' 国' +
+      (p.ended ? ' · 已结束回合' : '') + '</div>';
+  }).join('');
+}
+function aiLockUI(on) {
+  const dis = !!on;
+  document.getElementById('shopBtn').disabled = dis;
+  document.getElementById('depBtn').disabled = dis;
+  const pe = dis ? 'none' : '';
+  landG.style.pointerEvents = pe;
+  document.querySelectorAll('.chip').forEach(c => { c.style.pointerEvents = pe; });
+  if (!dis && !isDuel()) document.getElementById('endTurn').disabled = false;
+  else updateTurnUI();
+}
+function updateTurnUI() {
+  if (!isDuel()) return;
+  const p = players[turn];
+  const tag = document.getElementById('turnTag');
+  const tm = document.getElementById('turnTimer');
+  if (gameOver) {
+    tag.textContent = '对局结束';
+    tag.style.color = '#ffd166';
+    tm.textContent = '--';
+    tm.classList.remove('urgent');
+    document.getElementById('endTurn').disabled = true;
+    return;
+  }
+  const aiTurn = !!(p && p.isAI);
+  const myTurn = !netIsOnline() || turn === NET.seat;
+  document.getElementById('endTurn').disabled = aiTurn || !myTurn;
+  tag.textContent = 'P' + (turn + 1) + ' 回合' + (p && p.country ? ' · ' + STATES[p.country].name : '') +
+    (aiTurn ? ' · AI 行动中' : (netIsOnline() ? (myTurn ? ' · 轮到你' : ' · ' + playerTag(turn) + ' 行动中') : ''));
+  tag.style.color = p && p.country ? STATES[p.country].color : PLAYER_COLORS[turn];
+  tm.textContent = turnLeft + 's';
+  tm.classList.toggle('urgent', turnLeft <= 5);
+}
+function beginTurn() {
+  if (gameOver) return;
+  let p = players[turn];
+  if (!p || p.out) {
+    const nx = nextAlive(turn);
+    if (nx < 0) return;
+    turn = nx;
+    p = players[turn];
+  }
+  loadPlayer(turn);
+  if (p.turnDay !== inGameDay) {
+    p.turnDay = inGameDay;
+    money += baseIncome() + incomeBonus;
+    if (regenBonus > 0) healAll(regenBonus);
+  }
+  armed = null; selFire = null; placing = null;
+  hideFireUI();
+  document.getElementById('shopOv').classList.add('hidden');
+  document.getElementById('depOv').classList.add('hidden');
+  turnEndAt = Date.now() + TURN_SEC * 1000;
+  turnLeft = TURN_SEC;
+  soloMark = Date.now();
+  renderShop();
+  updateMoneyUI();
+  updateTurnUI();
+  renderPlayerInfo();
+  select(myCountry);
+  if (p.isAI) { aiTurnAt = Date.now(); aiLockUI(true); runAiTurn(p); }
+  else { aiLockUI(false); SND.turn(); }
+}
+function endTurn(auto) {
+  if (gameOver || gameMode === 'solo' || gameMode === 'menu') return;
+  if (players[turn] && players[turn].isAI && !aiEnding) return;
+  savePlayer();
+  const p = players[turn];
+  if (p) p.ended = true;
+  armed = null; selFire = null; placing = null;
+  hideFireUI();
+  const allOthersDone = aliveIdx().every(i => i === turn || players[i].ended);
+  const prev = turn;
+  if (allOthersDone) {
+    players.forEach(x => x.ended = false);
+    inGameDay++;
+    dayTag.textContent = '第 ' + inGameDay + ' 天';
+    const first = aliveIdx()[0] != null ? aliveIdx()[0] : 0;
+    turn = first;
+    beginTurn();
+    toast('第 ' + inGameDay + ' 天开始 · P' + (turn + 1) + ' 回合');
+  } else {
+    let nx = nextAlive(turn);
+    if (nx < 0) nx = turn;
+    turn = nx;
+    beginTurn();
+    if (auto) toast('P' + (prev + 1) + ' 时间到 · 轮到 P' + (turn + 1));
+  }
+  renderPlayerInfo();
+  netSync();
+}
+function soloNextDay() {
+  inGameDay++;
+  money += baseIncome() + incomeBonus;
+  if (regenBonus > 0) healAll(regenBonus);
+  dayTag.textContent = '第 ' + inGameDay + ' 天';
+  renderShop();
+  updateMoneyUI();
+}
+/* ===================== AI 对手 ===================== */
+const AI_TUNE = {
+  1: { buys: 1, aggr: .30, vassal: .10, focus: .15, gap: 850, maxUnit: 1, unitGate: 1500, bid: .40, cap: .70, haggle: 0 },
+  2: { buys: 2, aggr: .45, vassal: .25, focus: .30, gap: 700, maxUnit: 2, unitGate: 900, bid: .55, cap: .90, haggle: 0 },
+  3: { buys: 2, aggr: .60, vassal: .40, focus: .50, gap: 560, maxUnit: 2, unitGate: 600, bid: .70, cap: 1.05, haggle: 1 },
+  4: { buys: 3, aggr: .75, vassal: .60, focus: .70, gap: 430, maxUnit: 3, unitGate: 400, bid: .90, cap: 1.30, haggle: 1 },
+  5: { buys: 4, aggr: .90, vassal: .85, focus: .90, gap: 320, maxUnit: 4, unitGate: 250, bid: 1.15, cap: 1.70, haggle: 2 },
+};
+const AI_DIFF_HINT = {
+  1: '难度 1：只顾赚钱，偶有进攻，兵力很少；出价很低，被还价直接拒绝。',
+  2: '难度 2：会买经济与便宜部队，偶尔打中立国；出价偏低，不接受还价。',
+  3: '难度 3：经济、部队与特产兼顾，稳健扩张；出价接近价值，会小幅降价。',
+  4: '难度 4：重视攻击加成与主力部队，盯着你的主国打；出价高，愿意议价。',
+  5: '难度 5：全力进攻，优先购买攻击 / 产出 / 血量加成，并直取敌方主国；出价可能超过你的预期，会主动压价，议价空间最大。',
+};
+function aiTune(p) { return AI_TUNE[Math.min(5, Math.max(1, p.aiLv || 3))]; }
+function aiUnitKeys() {
+  return DEPLOYABLE.filter(k => k !== 'torpedo' && ITEMS[k].atk > 0 &&
+    (ITEMS[k].common || ITEMS[k].only === myCountry));
+}
+function aiUnitVal(it) {
+  const domF = 1 + domBonusPct(myCountry, it.dom || 'army') / 100;
+  return it.atk * domF * 2 + (it.crit || 0) * .06 + (it.splash || 0) * 8 + (it.shots || 1);
+}
+function aiUnitCount() { let n = 0; DEPLOYABLE.forEach(k => deployed[k].forEach(() => n++)); return n; }
+function aiScore(c, t) {
+  const it = c.it;
+  const urg = Math.min(1, inGameDay / 8);
+  const hasU = aiUnitCount() > 0;
+  if (it.unit) return (34 + it.atk * 7 + (it.crit || 0) * .25 + (it.splash || 0) * 26 + (it.loot || 0) * .2) *
+    (.55 + t.aggr) * (1 + 1.4 * urg);
+  if (it.inc) return (58 + it.inc * .09) / (1 + c.count * .30);
+  if (it.fx === 'income') return (66 + it.v * .10) / (1 + c.count * .30);
+  if (it.fx === 'power') return (40 + it.v * 9 + 22 * t.focus) * (hasU ? 1 : .35);
+  if (it.fx === 'crit') return (26 + 26 * t.focus) * (hasU ? 1 : .4);
+  if (it.fx === 'regen') return (20 + 22 * t.focus) * (hasU ? 1 : .5);
+  if (it.fx === 'def') return (18 + 26 * t.focus) * (hasU ? .6 : .3);
+  if (it.fx === 'salvage') return 24 * (hasU ? 1 : .4);
+  if (it.fx === 'gold') return 30;
+  return 4;
+}
+function aiCandidates(t) {
+  const out = [];
+  const add = (key, it, price, count) => {
+    if (goldLocked(key) || onceLocked(key)) return;
+    out.push({ key: key, it: it, price: price, count: count || 0 });
+  };
+  Object.keys(ITEMS).forEach(k => {
+    const it = ITEMS[k];
+    if (!it.common && it.only !== myCountry) return;
+    add(k, it, it.price, own[k]);
+  });
+  const mineNum = turn + 1;
+  Object.keys(VASSAL_ITEMS)
+    .filter(s => taken[s] === mineNum || t.vassal > .35)
+    .forEach(s => VASSAL_ITEMS[s].forEach((it, i) => {
+      if (it.unit || Math.random() > t.vassal) return;
+      add('v:' + s + ':' + i, it, vassalPrice(s, i), vOwn[s]);
+    }));
+  return out;
+}
+function aiBuy(t) {
+  let best = null, bestEff = 0;
+  aiCandidates(t).forEach(c => {
+    if (c.it.unit) return;
+    if (money < c.price) return;
+    const eff = aiScore(c, t) / Math.pow(c.price / 100, .30);
+    if (eff > bestEff) { bestEff = eff; best = c; }
+  });
+  return best ? buyItem(best.key) : false;
+}
+function aiPlace(k) {
+  const b = bboxOf(DEPREGION[myCountry] || myCountry);
+  for (let t = 0; t < 60; t++) {
+    const x = b[0] + Math.random() * (b[2] - b[0]);
+    const y = b[1] + Math.random() * (b[3] - b[1]);
+    let ok = true;
+    DEPLOYABLE.forEach(kk => deployed[kk].forEach(u => {
+      if (Math.hypot(u.x - x, u.y - y) < 0.8) ok = false;
+    }));
+    if (ok) {
+      deployed[k].push({ x: x, y: y, hp: ITEMS[k].hp, torps: 0, lastShot: 0, k: k });
+      toast('P' + (turn + 1) + '（' + playerTag(turn) + '）部署了 ' + ITEMS[k].name);
+      redrawDeployed();
+      return true;
+    }
+  }
+  return false;
+}
+function aiDeploy(t) {
+  const have = aiUnitCount();
+  if (have >= t.maxUnit) return false;
+  const keys = aiUnitKeys().filter(k => ITEMS[k].price <= money);
+  if (!keys.length) return false;
+  const pick = keys.sort((a, b) => aiUnitVal(ITEMS[b]) - aiUnitVal(ITEMS[a]))[0];
+  const price = ITEMS[pick].price;
+  const need = have === 0 ? Math.max(t.unitGate, price) : price * (1 + have * .6);
+  if (money < need) return false;
+  return buyItem(pick) && aiPlace(pick);
+}
+function aiTorpedo(t) {
+  if (t.focus < 0.4 || !deployed.carrier.length) return false;
+  if (deployed.torpedo.length >= 2) return false;
+  if (goldLocked('torpedo') || onceLocked('torpedo')) return false;
+  if (money < ITEMS.torpedo.price) return false;
+  const free = deployed.carrier.filter(c => (c.torps || 0) < 2);
+  if (!free.length) return false;
+  if (!buyItem('torpedo')) return false;
+  const c = free.sort((a, b) => (a.torps || 0) - (b.torps || 0))[0];
+  deployed.torpedo.push({ x: c.x, y: c.y, k: 'torpedo' });
+  c.torps = (c.torps || 0) + 1;
+  c.lastShot = 0;
+  toast('P' + (turn + 1) + '（' + playerTag(turn) + '）为航母安装了鱼雷');
+  return true;
+}
+function aiPickTarget(t) {
+  const mineNum = turn + 1;
+  const cands = Object.keys(STATES).filter(k => k !== myCountry && taken[k] !== mineNum && !diploLocked(k));
+  if (!cands.length) return null;
+  let best = null, bestS = -1;
+  cands.forEach(k => {
+    const st = STATES[k];
+    let s = 100 / (Math.max(0, defOf(k)) + 4);
+    s *= taken[k] ? 1.25 : 1.0;
+    if (st.type === 'main') s *= 1 + 2.2 * t.focus;
+    s *= 0.7 + Math.random() * 0.6;
+    if (s > bestS) { bestS = s; best = k; }
+  });
+  return best;
+}
+function aiAttackOne(u, t) {
+  if (!u) return false;
+  const it = ITEMS[u.k];
+  if (!it || !it.atk) return false;
+  if (u.lastShot === inGameDay) return false;
+  const k = aiPickTarget(t);
+  if (!k) return false;
+  armed = u;
+  toast('P' + (turn + 1) + '（' + playerTag(turn) + '）用 ' + it.name + ' 进攻 ' + STATES[k].name);
+  return fireAt(k);
+}
+/* ===================== 谈判：AI 出价收购玩家领地 ===================== */
+const TRADE_SEC = 30;        // 玩家答复时限，超时视为拒绝
+const TRADE_GAP = 3;         // 同一国家成交/被拒后，至少隔几天才会再谈
+let tradeWait = false;
+const tradeCool = {};
+function tradeValue(k) {
+  const lab = ELABELS[k];
+  const area = lab && lab[2] ? lab[2] : 20;
+  return Math.max(300, Math.round((200 + area * 7) / 50) * 50);
+}
+function tradeR50(n) { return Math.max(0, Math.round(n / 50) * 50); }
+function aiTradeTarget() {
+  const cands = Object.keys(STATES).filter(k =>
+    taken[k] === 1 && STATES[k].type !== 'main' && k !== myCountry &&
+    inGameDay - (tradeCool[k] == null ? -99 : tradeCool[k]) >= TRADE_GAP);
+  if (!cands.length) return null;
+  let best = null, bs = -1;
+  cands.forEach(k => {
+    const s = tradeValue(k) + defOf(k) * 80 + Math.random() * .8;
+    if (s > bs) { bs = s; best = k; }
+  });
+  return best;
+}
+function doTrade(k, price) {
+  if (!(price > 0)) return false;
+  if (price > money) { toast('交易失败：AI 付不起 ' + fmtY(price)); return false; }
+  money -= price;
+  players[0].money += price;
+  taken[k] = turn + 1;
+  defState[k] = baseDef(k);
+  tradeCool[k] = inGameDay;
+  syncMainMap();
+  checkWin();
+  renderPlayerInfo();
+  updateMoneyUI();
+  toast('成交：' + STATES[k].name + ' 归 P' + (turn + 1) + '，你获得 ' + fmtY(price));
+  return true;
+}
+function askTrade(k, offer, t, p) {
+  return new Promise(resolve => {
+    const body = document.getElementById('tradeBody');
+    const acc = document.getElementById('trAccept');
+    const rej = document.getElementById('trReject');
+    const inp = document.getElementById('trPrice');
+    const ctr = document.getElementById('trCounter');
+    const tip = document.getElementById('trTip');
+    const note = document.getElementById('tradeNote');
+    let iv = 0;
+    let left = TRADE_SEC;
+    const close = r => {
+      clearInterval(iv);
+      tradeWait = false;
+      document.getElementById('tradeOv').classList.add('hidden');
+      acc.onclick = rej.onclick = ctr.onclick = inp.onkeydown = null;
+      aiTurnAt = Date.now();
+      resolve(r);
+    };
+    const render = () => {
+      const afford = money >= offer;
+      const v = tradeValue(k);
+      body.innerHTML = 'P' + (turn + 1) + '（难度 ' + p.aiLv + '）想收购你占领的 <span class="nm">' + STATES[k].name +
+        '</span>，出价 <b>' + fmtY(offer) + '</b>。<br>参考价约 ' + fmtY(v) + '（面积越大越值钱），该国防御 ' +
+        defOf(k) + '，成交后防御重置为基础值。';
+      document.getElementById('tradeAiMoney').textContent = 'AI 余额 ' + fmtY(money);
+      acc.disabled = !afford;
+      acc.textContent = afford ? '同意 · 收 ' + fmtY(offer) : 'AI 付不起';
+      tip.textContent = left + ' 秒内不答复视为拒绝';
+      note.textContent = afford
+        ? '你的主国不可交易。加价必须高于当前报价；AI 只会用自己账户里的钱出价。'
+        : 'AI 余额不足，无法成交。';
+    };
+    acc.onclick = () => close({ action: 'accept' });
+    rej.onclick = () => close({ action: 'reject' });
+    ctr.onclick = () => {
+      const val = Math.floor(Number(inp.value) || 0);
+      if (!(val > offer)) { tip.textContent = '还价必须高于 ' + fmtY(offer); inp.focus(); return; }
+      close({ action: 'counter', price: val });
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') ctr.onclick(); };
+    tradeWait = true;
+    aiTurnAt = Date.now();
+    iv = setInterval(() => {
+      left--;
+      if (left <= 0) { close({ action: 'reject', auto: true }); return; }
+      render();
+    }, 1000);
+    render();
+    inp.value = tradeR50(offer + Math.max(100, tradeR50(tradeValue(k) * .3)));
+    document.getElementById('tradeOv').classList.remove('hidden');
+  });
+}
+async function aiNegotiate(t, p, live) {
+  if (gameMode !== 'ai') return false;
+  const k = aiTradeTarget();
+  if (!k) return false;
+  const v = tradeValue(k);
+  let price = Math.min(tradeR50(v * t.bid), money);
+  if (price < 100) return false;
+  toast('P' + (turn + 1) + ' 就 ' + STATES[k].name + ' 提出收购');
+  for (let round = 0; round < 3; round++) {
+    const r = await askTrade(k, price, t, p);
+    if (!live()) { tradeCool[k] = inGameDay; return false; }
+    if (r.action === 'accept') return doTrade(k, price);
+    if (r.action === 'reject') {
+      tradeCool[k] = inGameDay;
+      toast(r.auto ? '谈判超时，' + STATES[k].name + ' 交易取消' : '你拒绝了收购，' + STATES[k].name + ' 仍归你');
+      return false;
+    }
+    const cap = tradeR50(v * t.cap);
+    if (r.price <= cap && r.price <= money) { toast('AI 接受你的还价'); return doTrade(k, r.price); }
+    if (!t.haggle) { tradeCool[k] = inGameDay; toast('AI 拒绝 ' + fmtY(r.price) + ' 的还价'); return false; }
+    let mid = tradeR50((price + r.price) / 2);
+    if (mid <= price) mid = price + 50;
+    if (mid > money) {
+      mid = tradeR50(money);
+      if (mid <= price) { tradeCool[k] = inGameDay; toast('AI 最多只能出 ' + fmtY(money) + '，谈不拢'); return false; }
+    }
+    price = mid;
+    toast('AI 降价到 ' + fmtY(price));
+  }
+  tradeCool[k] = inGameDay;
+  return false;
+}
+function runAiTurn(p) {
+  const id = ++aiRunId;
+  const t = aiTune(p);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const live = () => id === aiRunId && !gameOver && players[turn] === p;
+  const finish = () => { aiEnding = true; endTurn(false); aiEnding = false; };
+  (async () => {
+    try {
+      await wait(650);
+      if (!live()) return;
+      toast('P' + (turn + 1) + '（AI 难度 ' + p.aiLv + '）开始行动');
+      await aiNegotiate(t, p, live);
+      if (!live()) return;
+      for (let i = 0; i < t.maxUnit; i++) { await wait(t.gap); if (!live()) return; aiDeploy(t); }
+      await wait(t.gap); if (!live()) return; aiTorpedo(t);
+      for (let i = 0; i < t.buys; i++) { await wait(t.gap); if (!live()) return; aiBuy(t); }
+      const units = [];
+      DEPLOYABLE.forEach(k => {
+        if (k === 'torpedo') return;
+        deployed[k].forEach(u => units.push(u));
+      });
+      for (let i = 0; i < units.length; i++) { await wait(t.gap); if (!live()) return; aiAttackOne(units[i], t); }
+      await wait(t.gap);
+      if (live()) finish();
+    } catch (err) {
+      if (id === aiRunId && !gameOver) finish();
+    }
+  })();
+}
+setInterval(() => {
+  if (gameMode === 'menu' || gameOver) return;
+  if (gameMode === 'solo') {
+    if (Date.now() - soloMark >= TURN_SEC * 1000) { soloMark = Date.now(); soloNextDay(); }
+    return;
+  }
+  // 联机在大厅/选国阶段没有回合计时，否则 turnEndAt=0 会让房主立刻误判超时并切回合
+  if (netIsOnline() && (!NET.started || NET.phase !== 'play')) return;
+  const left = Math.max(0, Math.ceil((turnEndAt - Date.now()) / 1000));
+  if (left !== turnLeft) { turnLeft = left; updateTurnUI(); }
+  // 谈判期间回合计时暂停，避免 30 秒到点把回合切走
+  if (tradeWait) turnEndAt = Date.now() + TURN_SEC * 1000;
+  // AI 回合兜底：无论 AI 链条是否卡住，最多 18 秒必定把回合交还玩家
+  if (isAIPlayer(turn) && !aiEnding && !tradeWait && aiTurnAt && Date.now() - aiTurnAt > AI_TURN_MAX) {
+    aiTurnAt = 0;
+    aiRunId++;
+    toast('P' + (turn + 1) + '（AI）行动超时，回合交还');
+    aiEnding = true; endTurn(true); aiEnding = false;
+    return;
+  }
+  if (turnLeft <= 0) {
+    // 联机模式只有房主负责切换回合，避免多人同时结束
+    if (netIsOnline()) {
+      // 任一客户端手动结束回合后，房主的回合计时器立刻失效，这里必须同时停掉，
+      // 否则倒计时归零会误判超时，房主自己再切一次回合（联机下尤其明显）
+      if (netIsHost()) { turnEndAt = Date.now() + TURN_SEC * 1000; return; }
+      return;
+    }
+    endTurn(true);
+  }
+}, 250);
+
+document.getElementById('shopBtn').addEventListener('click', () => {
+  renderShop();
+  document.getElementById('shopOv').classList.remove('hidden');
+});
+document.getElementById('closeShop').addEventListener('click', () =>
+  document.getElementById('shopOv').classList.add('hidden'));
+document.getElementById('shopOv').addEventListener('click', e => {
+  if (e.target.id === 'shopOv') document.getElementById('shopOv').classList.add('hidden');
+});
+
+const ns = 'http://www.w3.org/2000/svg';
+const DEPLOYABLE = Object.keys(ITEMS).filter(k => ITEMS[k].unit);
+const DEPREGION = { turkey: 'turkey', germany: 'germany', uk: 'uk' };
+let deployed = freshDeployed();
+let placing = null;
+let selFire = null;
+let depSvg = null;
+let depUnitsG = null;
+let depInfo = null;
+
+function bboxOf(k) {
+  const nums = EPATHS[k].replace(/[MLZ]/g, ' ').trim().split(/\s+/).map(Number);
+  let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+  for (let i = 0; i < nums.length; i += 2) {
+    if (nums[i] < minx) minx = nums[i];
+    if (nums[i] > maxx) maxx = nums[i];
+    if (nums[i + 1] < miny) miny = nums[i + 1];
+    if (nums[i + 1] > maxy) maxy = nums[i + 1];
+  }
+  return [minx, miny, maxx, maxy];
+}
+function remainingOf(k) {
+  return own[k] - (k === 'torpedo' ? deployed.torpedo.length : deployed[k].length);
+}
+function openDeploy() {
+  if (!myCountry || !DEPREGION[myCountry]) return;
+  const b = bboxOf(DEPREGION[myCountry]);
+  let bbox = b;
+  if (myCountry === 'uk') {
+    const w = b[2] - b[0], h = b[3] - b[1], cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+    const rad = Math.max(w, h) * 1.15;
+    bbox = [cx - rad, cy - rad * 0.9, cx + rad, cy + rad * 0.9];
+  }
+  const bw = bbox[2] - bbox[0], bh = bbox[3] - bbox[1], pad = Math.max(bw, bh) * 0.15;
+  const vb = [bbox[0] - pad, bbox[1] - pad, bw + 2 * pad, bh + 2 * pad];
+  const dmap = document.getElementById('depMap');
+  dmap.innerHTML = '';
+  depSvg = document.createElementNS(ns, 'svg');
+  depSvg.setAttribute('viewBox', vb.map(v => v.toFixed(2)).join(' '));
+  depSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  const defbg = document.createElementNS(ns, 'rect');
+  defbg.setAttribute('x', (vb[0] - 1).toFixed(2)); defbg.setAttribute('y', (vb[1] - 1).toFixed(2));
+  defbg.setAttribute('width', (vb[2] + 2).toFixed(2)); defbg.setAttribute('height', (vb[3] + 2).toFixed(2));
+  defbg.setAttribute('fill', '#0d1b36');
+  depSvg.appendChild(defbg);
+  const otherG = document.createElementNS(ns, 'g');
+  otherG.setAttribute('pointer-events', 'none');
+  Object.keys(EPATHS).forEach(k => {
+    if (!STATES[k] || k === myCountry) return;
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', EPATHS[k]);
+    p.setAttribute('pointer-events', 'none');
+    p.style.fill = '#22314e';
+    p.setAttribute('opacity', '0.9');
+    otherG.appendChild(p);
+  });
+  depSvg.appendChild(otherG);
+  const ownp = document.createElementNS(ns, 'path');
+  ownp.setAttribute('d', EPATHS[myCountry]);
+  ownp.setAttribute('pointer-events', 'none');
+  ownp.style.fill = STATES[myCountry].color;
+  ownp.setAttribute('fill-opacity', '0.8');
+  depSvg.appendChild(ownp);
+  depUnitsG = document.createElementNS(ns, 'g');
+  depUnitsG.setAttribute('pointer-events', 'none');
+  depSvg.appendChild(depUnitsG);
+  depInfo = document.createElementNS(ns, 'text');
+  depInfo.setAttribute('x', vb[0].toFixed(2)); depInfo.setAttribute('y', (vb[1] + 0.9).toFixed(2));
+  depInfo.setAttribute('fill', '#ffd166'); depInfo.setAttribute('font-size', '0.55');
+  depInfo.setAttribute('pointer-events', 'none');
+  depSvg.appendChild(depInfo);
+  dmap.appendChild(depSvg);
+  document.getElementById('depTitle').textContent = '部署 · ' + STATES[myCountry].name;
+  placing = null;
+  selFire = null;
+  document.getElementById('selFireNm').textContent = '未选择';
+  buildPalette();
+  redrawDeployed();
+  document.getElementById('depOv').classList.remove('hidden');
+}
+function redrawDeployed() {
+  if (!depUnitsG) return;
+  depUnitsG.innerHTML = '';
+  DEPLOYABLE.forEach(k => {
+    deployed[k].forEach(u => {
+      if (k === 'torpedo') return;
+      const g = document.createElementNS(ns, 'g');
+      if (u === selFire) {
+        const ring = document.createElementNS(ns, 'circle');
+        ring.setAttribute('cx', u.x.toFixed(2)); ring.setAttribute('cy', u.y.toFixed(2));
+        ring.setAttribute('r', '0.62');
+        ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#ffd166');
+        ring.setAttribute('stroke-dasharray', '0.12 0.08'); ring.setAttribute('stroke-width', '0.05');
+        g.appendChild(ring);
+      }
+      const ic = document.createElementNS(ns, 'text');
+      ic.setAttribute('x', u.x.toFixed(2)); ic.setAttribute('y', u.y.toFixed(2));
+      ic.setAttribute('text-anchor', 'middle'); ic.setAttribute('font-size', '0.85');
+      ic.textContent = ITEMS[k].icon;
+      g.appendChild(ic);
+      const hpmax = ITEMS[k].hp;
+      if (hpmax > 0) {
+        const ratio = Math.max(0, u.hp / hpmax);
+        const bw = 0.9, bh = 0.14, bx = u.x - bw / 2, by = u.y - 0.95;
+        const bgr = document.createElementNS(ns, 'rect');
+        bgr.setAttribute('x', bx.toFixed(2)); bgr.setAttribute('y', by.toFixed(2));
+        bgr.setAttribute('width', bw.toFixed(2)); bgr.setAttribute('height', bh.toFixed(2));
+        bgr.setAttribute('fill', '#13223a');
+        g.appendChild(bgr);
+        const hpf = document.createElementNS(ns, 'rect');
+        hpf.setAttribute('x', bx.toFixed(2)); hpf.setAttribute('y', by.toFixed(2));
+        hpf.setAttribute('width', (bw * ratio).toFixed(2)); hpf.setAttribute('height', bh.toFixed(2));
+        hpf.setAttribute('fill', ratio >= 0.5 ? '#ffd166' : '#ff6b6b');
+        g.appendChild(hpf);
+        const num = document.createElementNS(ns, 'text');
+        num.setAttribute('x', u.x.toFixed(2)); num.setAttribute('y', (by - 0.12).toFixed(2));
+        num.setAttribute('text-anchor', 'middle'); num.setAttribute('font-size', '0.4');
+        num.setAttribute('fill', '#d8e6f2');
+        num.textContent = u.hp + '/' + hpmax;
+        g.appendChild(num);
+      }
+      const tagTxt = [ITEMS[k].shots > 1 ? '双发' : '', ITEMS[k].splash ? '溅射' : '', ITEMS[k].crit ? '暴击' : '', ITEMS[k].loot ? '缴获' : ''].filter(Boolean).join('·');
+      if (tagTxt) {
+        const tg = document.createElementNS(ns, 'text');
+        tg.setAttribute('x', u.x.toFixed(2)); tg.setAttribute('y', (u.y + 1.05).toFixed(2));
+        tg.setAttribute('text-anchor', 'middle'); tg.setAttribute('font-size', '0.34');
+        tg.setAttribute('fill', '#7fe3f7');
+        tg.textContent = tagTxt;
+        g.appendChild(tg);
+      }
+      if (k === 'carrier' && u.torps > 0) {
+        const tt = document.createElementNS(ns, 'text');
+        tt.setAttribute('x', u.x.toFixed(2)); tt.setAttribute('y', (u.y + 1.05).toFixed(2));
+        tt.setAttribute('text-anchor', 'middle'); tt.setAttribute('font-size', '0.5');
+        tt.setAttribute('fill', '#ffd166');
+        tt.textContent = '鱼雷 ×' + u.torps;
+        g.appendChild(tt);
+      }
+      depUnitsG.appendChild(g);
+    });
+  });
+}
+function buildPalette() {
+  const dp = document.getElementById('depOpts');
+  document.querySelectorAll('.depopt').forEach(x => x.remove());
+  const rows = DEPLOYABLE.filter(k => (ITEMS[k].common || ITEMS[k].only === myCountry) && own[k] > 0);
+  if (!rows.length) {
+    const n = document.createElement('div');
+    n.className = 'depnote';
+    n.textContent = '还没有可部署的单位，先去商店购买吧。';
+    dp.insertBefore(n, dp.firstChild);
+  }
+  rows.forEach(k => {
+    const left = remainingOf(k);
+    const div = document.createElement('div');
+    div.className = 'depopt';
+    div.innerHTML = '<div class="o-icon">' + ITEMS[k].icon + '</div>' +
+      '<div class="o-info"><b>' + ITEMS[k].name + '</b>' +
+      '<span>' + (k === 'torpedo' ? '无血量 · 需安装在航母' : mechCn(ITEMS[k])) +
+      ' · 待部署 ' + left + '/' + own[k] + '</span></div>';
+    const btn = document.createElement('button');
+    btn.className = 'goldbtn';
+    btn.textContent = k === 'torpedo' ? '安装' : '部署';
+    btn.disabled = left <= 0;
+    btn.addEventListener('click', () => {
+      placing = k;
+      depInfo.textContent = (k === 'torpedo' ? '点击一艘已部署的航空母舰以安装鱼雷' : '点击地图放置 ' + ITEMS[k].name) + '（Esc 取消）';
+      toast((k === 'torpedo' ? '安装模式：点击地图上的航空母舰' : '放置模式：点击地图任意处安放 ' + ITEMS[k].name));
+    });
+    div.appendChild(btn);
+    dp.insertBefore(div, dp.firstChild);
+  });
+  redrawDeployed();
+}
+function pointFromEvent(svg, e) {
+  const r = svg.getBoundingClientRect();
+  const vb = svg.viewBox.baseVal;
+  const sc = Math.min(r.width / vb.width, r.height / vb.height) || 1;
+  const offx = (r.width - vb.width * sc) / 2;
+  const offy = (r.height - vb.height * sc) / 2;
+  return {
+    x: (e.clientX - r.left - offx) / sc + vb.x,
+    y: (e.clientY - r.top - offy) / sc + vb.y
+  };
+}
+function nearestUnit(p) {
+  let best = null, bd = 0;
+  DEPLOYABLE.forEach(k => {
+    deployed[k].forEach(u => {
+      const d = Math.hypot(u.x - p.x, u.y - p.y);
+      if (d < 0.7 && (!best || d < bd)) { best = u; bd = d; }
+    });
+  });
+  return best;
+}
+function netApplyPlace(kind, p) {
+  if (kind === 'torpedo') {
+    const c = deployed.carrier.find(cr => Math.hypot(cr.x - p.x, cr.y - p.y) < 1.1);
+    if (!c) {
+      depInfo.textContent = '未找到航母：鱼雷必须安装在一艘已部署的航母上';
+      toast('请先部署航空母舰，再点击它安装鱼雷');
+      return false;
+    }
+    deployed.torpedo.push({ x: c.x, y: c.y });
+    c.torps = (c.torps || 0) + 1;
+    c.lastShot = 0;
+    if (remainingOf('torpedo') <= 0) placing = null;
+    buildPalette();
+    toast('鱼雷已安装（' + c.torps + ' 枚）');
+    return true;
+  }
+  const u = { x: p.x, y: p.y, hp: ITEMS[kind].hp, torps: 0, lastShot: 0, k: kind };
+  deployed[kind].push(u);
+  if (remainingOf(kind) <= 0) {
+    placing = null;
+    toast(ITEMS[u.k].name + ' 已全部部署');
+  } else {
+    toast(ITEMS[u.k].name + ' 已部署，还可再放 ' + remainingOf(kind) + ' 个');
+  }
+  buildPalette();
+  return true;
+}
+document.getElementById('depMap').addEventListener('click', e => {
+  if (!depSvg) return;
+  const p = pointFromEvent(depSvg, e);
+  if (placing) {
+    if (netIsOnline()) {
+      if (!netMyTurn()) { toast('还没轮到你行动'); return; }
+      if (netIsHost()) { if (netApplyPlace(placing, p)) netSync(); }
+      else netSend({ t: 'act', a: { k: 'place', u: placing, x: p.x, y: p.y } });
+      return;
+    }
+    netApplyPlace(placing, p);
+    return;
+  }
+  const u = nearestUnit(p);
+  if (u) {
+    selFire = u;
+    document.getElementById('selFireNm').textContent = ITEMS[u.k].name;
+    depInfo.textContent = '已将 ' + ITEMS[u.k].name + ' 列为射击单位';
+    toast('已选中 ' + ITEMS[u.k].name + '，点「发射子弹」开火');
+    redrawDeployed();
+    return;
+  }
+  depInfo.textContent = '点击地图上的单位图标以选择射击单位';
+  toast('点击国家上的单位图标可选中它；或先在左侧点「部署」再点击地图放置');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    placing = null;
+    if (depInfo) depInfo.textContent = '';
+    redrawDeployed();
+  }
+});
+document.getElementById('depBtn').addEventListener('click', openDeploy);
+document.getElementById('depClose').addEventListener('click', () => {
+  placing = null;
+  document.getElementById('depOv').classList.add('hidden');
+});
+document.getElementById('depFire').addEventListener('click', () => {
+  if (!selFire) {
+    depInfo.textContent = '先在放大地图上点击一个已部署单位';
+    return;
+  }
+  if (selFire.lastShot === inGameDay) {
+    depInfo.textContent = ITEMS[selFire.k].name + ' 今天已开火，明日再战';
+    return;
+  }
+  if (ITEMS[selFire.k].atk <= 0) {
+    depInfo.textContent = ITEMS[selFire.k].name + ' 没有攻击力，请选择其他单位';
+    return;
+  }
+  armed = selFire;
+  document.getElementById('depOv').classList.add('hidden');
+  showFireUI(selFire);
+  depInfo.textContent = '';
+});
+
+function showPickFor(i) {
+  pickIdx = i;
+  document.getElementById('pickTitle').textContent = 'P' + (i + 1) + ' 选择主国';
+  document.getElementById('pickSub').textContent = i === 0
+    ? '先手 · 土耳其 / 德国 / 英国 任选其一'
+    : '第 ' + (i + 1) + ' 位 · 不可与其他玩家选到相同的主国';
+  document.getElementById('pickBack').classList.toggle('hidden', i === 0);
+  const used = players.filter((x, j) => j !== i && x.country).map(x => x.country);
+  document.querySelectorAll('.pick').forEach(b => {
+    b.classList.toggle('dis', used.indexOf(b.getAttribute('data-k')) >= 0);
+  });
+  document.getElementById('startOv').classList.remove('hidden');
+}
+function chooseCountry(k, forSeat) {
+  const who = (forSeat === undefined || forSeat === null) ? NET.seat : forSeat;
+  if (gameMode === 'solo') {
+    players[0].country = k;
+    startGame(0);
+    return;
+  }
+  if (gameMode === 'ai') {
+    players[0].country = k;
+    const rest = MAINS.filter(m => m !== k);
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
+    }
+    for (let i = 1; i < nPlayers; i++) players[i].country = rest[(i - 1) % rest.length];
+    startGame(0);
+    return;
+  }
+  if (gameMode === 'online') {
+    if (pickIdx !== who) { toast('还没轮到该玩家选主国'); return; }
+    if (!netIsHost()) { netSend({ t: 'act', a: { k: 'pick', c: k } }); return; }
+    players[pickIdx].country = k;
+    if (pickIdx < nPlayers - 1) { showPickFor(pickIdx + 1); }
+    else startGame(0);
+    netSync();
+    return;
+  }
+  players[pickIdx].country = k;
+  if (pickIdx < nPlayers - 1) { showPickFor(pickIdx + 1); return; }
+  startGame(0);
+}
+function startGame(first) {
+  if (gameMode === 'online') NET.phase = 'play';
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('hudLeft').style.display = '';
+  const duel = isDuel();
+  document.getElementById('duoInfo').classList.toggle('hidden', !duel);
+  document.getElementById('turnTag').classList.toggle('hidden', !duel);
+  document.getElementById('turnTimer').classList.toggle('hidden', !duel);
+  document.getElementById('endTurn').classList.toggle('hidden', !duel);
+  turn = first;
+  loadPlayer(first);
+  soloMark = Date.now();
+  renderShop();
+  updateMoneyUI();
+  if (isDuel()) beginTurn();
+  else { select(myCountry); renderPlayerInfo(); }
+}
+document.getElementById('btnSolo').addEventListener('click', () => {
+  gameMode = 'solo';
+  nPlayers = 1;
+  resetWorld();
+  document.getElementById('modeOv').classList.add('hidden');
+  document.getElementById('pickTitle').textContent = '选择初始国';
+  document.getElementById('pickSub').textContent = '三大主国，各有所长，随你统领';
+  document.getElementById('pickBack').classList.add('hidden');
+  document.querySelectorAll('.pick').forEach(b => b.classList.remove('dis'));
+  document.getElementById('startOv').classList.remove('hidden');
+});
+document.getElementById('btnDuo').addEventListener('click', () => {
+  gameMode = 'duo';
+  nPlayers = 2;
+  resetWorld();
+  document.getElementById('modeOv').classList.add('hidden');
+  showPickFor(0);
+});
+document.getElementById('btnTrio').addEventListener('click', () => {
+  gameMode = 'trio';
+  nPlayers = 3;
+  resetWorld();
+  document.getElementById('modeOv').classList.add('hidden');
+  showPickFor(0);
+});
+document.getElementById('btnAI').addEventListener('click', () => {
+  const on = document.querySelector('#aiCountSeg button.on');
+  nAIs = on ? parseInt(on.getAttribute('data-n'), 10) : 1;
+  const onD = document.querySelector('#aiDiffSeg button.on');
+  aiDiff = onD ? parseInt(onD.getAttribute('data-d'), 10) : 3;
+  document.getElementById('aiDiffHint').textContent = AI_DIFF_HINT[aiDiff];
+  document.getElementById('aiOv').classList.remove('hidden');
+});
+document.getElementById('aiBack').addEventListener('click', () =>
+  document.getElementById('aiOv').classList.add('hidden'));
+document.querySelectorAll('#aiCountSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    nAIs = parseInt(b.getAttribute('data-n'), 10);
+    document.querySelectorAll('#aiCountSeg button').forEach(x => x.classList.toggle('on', x === b));
+  });
+});
+document.querySelectorAll('#aiDiffSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    aiDiff = parseInt(b.getAttribute('data-d'), 10);
+    document.querySelectorAll('#aiDiffSeg button').forEach(x => x.classList.toggle('on', x === b));
+    document.getElementById('aiDiffHint').textContent = AI_DIFF_HINT[aiDiff];
+  });
+});
+document.getElementById('aiStart').addEventListener('click', () => {
+  gameMode = 'ai';
+  nPlayers = Math.min(3, nAIs + 1);
+  resetWorld();
+  for (let i = 1; i < nPlayers; i++) { players[i].isAI = true; players[i].aiLv = aiDiff; }
+  document.getElementById('aiOv').classList.add('hidden');
+  document.getElementById('modeOv').classList.add('hidden');
+  showPickFor(0);
+  document.getElementById('pickSub').textContent = '你选择主国，其余 ' + nAIs + ' 国由 AI（难度 ' + aiDiff + '）接管';
+});
+document.getElementById('pickBackBtn').addEventListener('click', () => {
+  if (isDuel() && pickIdx > 0) showPickFor(pickIdx - 1);
+});
+document.getElementById('endTurn').addEventListener('click', () => {
+  if (netIsOnline()) {
+    if (!netMyTurn()) return;
+    if (netIsHost()) endTurn(false); else netSend({ t: 'act', a: { k: 'end' } });
+    return;
+  }
+  endTurn(false);
+});
+document.getElementById('againBtn').addEventListener('click', () => {
+  if (netIsOnline()) {
+    if (netIsHost()) { netSend({ t: 'lobby' }); netBackToLobby('已结束本局 · 点「开始游戏」开新一局'); }
+    else netBackToLobby('本局结束 · 等待房主开始新一局');
+    return;
+  }
+  location.reload();
+});
+document.querySelectorAll('#startOv .pick[data-k]').forEach(b => {
+  b.addEventListener('click', () => {
+    const k = b.getAttribute('data-k');
+    if (!k) return;
+    if (b.classList.contains('dis')) {
+      toast('该主国已被其他玩家选走，请换一个');
+      return;
+    }
+    if (gameMode === 'menu') return;
+    chooseCountry(k);
+  });
+});
+
+/* ===================== 联机模式（P2P：创建者 = 房主，无需服务器） ===================== */
+const NET = {
+  peer: null, connHost: null, conns: {}, seat: -1, key: '2p', size: 2, room: null,
+  started: false, phase: 'lobby', last: null, endShown: false,
+  myName: '', closing: false
+};
+function netIsOnline() { return gameMode === 'online'; }
+function netIsHost() { return NET.seat === 0; }
+function netMyTurn() { return netIsOnline() && NET.started && !gameOver && turn === NET.seat; }
+function netSend(o) {
+  if (!NET || NET.closing) return;
+  try {
+    if (netIsHost()) {
+      Object.keys(NET.conns).forEach(k => {
+        const c = NET.conns[k];
+        if (c && c.open && (o.t !== 'actErr' || k === o.to)) c.send(JSON.stringify(o));
+      });
+    } else if (NET.connHost && NET.connHost.open) {
+      NET.connHost.send(JSON.stringify(o));
+    }
+  } catch (e) {}
+}
+function netSendTo(conn, o) {
+  try { if (conn && conn.open) conn.send(JSON.stringify(o)); } catch (e) {}
+}
+function netCopy(dst, src) {
+  Object.keys(dst).forEach(k => delete dst[k]);
+  Object.keys(src || {}).forEach(k => { dst[k] = src[k]; });
+}
+function netFindUnit(x, y) {
+  let f = null;
+  DEPLOYABLE.forEach(k => deployed[k].forEach(u => {
+    if (!f && Math.abs(u.x - x) < 0.001 && Math.abs(u.y - y) < 0.001) f = u;
+  }));
+  return f;
+}
+function netTryFire(k) {
+  if (!netIsOnline()) { fireAt(k); return; }
+  if (!netMyTurn() || !armed) { hideFireUI(); return; }
+  const u = armed;
+  if (netIsHost()) { fireAt(k); netSync(); return; }
+  netSend({ t: 'act', a: { k: 'fire', c: k, x: u.x, y: u.y } });
+  hideFireUI();
+}
+function netCopy(dst, src) {
+  Object.keys(dst).forEach(k => delete dst[k]);
+  Object.keys(src || {}).forEach(k => { dst[k] = src[k]; });
+}
+// 快照必须和真实状态脱钩：房主 netSync() 后会立刻 netApplySnap(自己的快照)，
+// 若 netSnap() 直接返回 taken/defState 等对象引用，netCopy 会先清空再从同一个空对象复制，把数据全抹掉
+function netObj(o) { const r = {}; Object.keys(o || {}).forEach(k => { r[k] = o[k]; }); return r; }
+// deployed 是 { 兵种: [单位...] }，数组也要各拷一份，避免快照和真实状态共用同一批数组
+function netDep(d) { const r = {}; Object.keys(d || {}).forEach(k => { r[k] = (d[k] || []).slice(); }); return r; }
+function netSnap() {
+  return {
+    n: nPlayers, day: inGameDay, turn: turn, left: turnLeft,
+    over: gameOver, pick: NET.phase === 'pick' ? pickIdx : -1,
+    taken: netObj(taken), def: netObj(defState), gb: netObj(goldBought), ob: netObj(onceBought), win: NET.last,
+    ps: players.map(p => ({
+      c: p.country, m: p.money, own: netObj(p.own), v: netObj(p.vOwn), d: netDep(p.deployed),
+      ib: p.incomeBonus, ab: p.atkBonus, cb: p.critBonus, rb: p.regenBonus, sb: p.salvageBonus,
+      e: p.ended, td: p.turnDay, o: p.out, oby: p.outBy, ol: p.outLand, nm: p.name
+    }))
+  };
+}
+function netShowHud() {
+  ['startOv', 'onlineOv'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('hudLeft').style.display = '';
+  ['duoInfo', 'turnTag', 'turnTimer', 'endTurn'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+}
+function netGatePick() {
+  const mine = pickIdx === NET.seat;
+  document.getElementById('pickTitle').textContent = 'P' + (pickIdx + 1) + ' 选择主国';
+  document.getElementById('pickSub').textContent = mine
+    ? (pickIdx === 0 ? '轮到你（先手）· 土耳其 / 德国 / 英国 任选其一' : '轮到你 · 不可与其他玩家选到相同的主国')
+    : '等待 P' + (pickIdx + 1) + ' 选择主国…';
+  document.getElementById('pickBack').classList.add('hidden');
+  document.querySelectorAll('#startOv .pick[data-k]').forEach(b => {
+    b.disabled = !mine;
+    b.style.opacity = mine ? '' : '0.4';
+  });
+}
+function netShowPick(i) { showPickFor(i); netGatePick(); }
+function netGate() { if (netIsOnline()) aiLockUI(!netMyTurn()); }
+function netSync() {
+  if (!netIsOnline() || !netIsHost() || !NET.started) return;
+  // 选国阶段 myCountry 还是空，此时不能回写，否则会把刚选好的国家抹掉
+  if (myCountry) savePlayer();
+  const s = netSnap();
+  netSend({ t: 'state', s: s });
+  netApplySnap(s);
+}
+function netApplySnap(s) {
+  if (!s) return;
+  nPlayers = s.n;
+  netCopy(taken, s.taken);
+  netCopy(defState, s.def);
+  netCopy(goldBought, s.gb);
+  netCopy(onceBought, s.ob);
+  players.length = 0;
+  for (let i = 0; i < s.ps.length; i++) {
+    const d = s.ps[i], p = newPlayer(i);
+    p.country = d.c; p.money = d.m; p.own = d.own; p.vOwn = d.v; p.deployed = d.d;
+    p.incomeBonus = d.ib; p.atkBonus = d.ab; p.critBonus = d.cb;
+    p.regenBonus = d.rb; p.salvageBonus = d.sb; p.ended = d.e; p.turnDay = d.td;
+    p.out = d.o; p.outBy = d.oby; p.outLand = d.ol; p.name = d.nm;
+    players.push(p);
+  }
+  turn = s.turn;
+  inGameDay = s.day;
+  dayTag.textContent = '第 ' + inGameDay + ' 天';
+  turnLeft = s.left;
+  if (!netIsHost()) turnEndAt = Date.now() + Math.max(1, s.left) * 1000;
+  gameOver = !!s.over;
+  armed = null; selFire = null; placing = null;
+  hideFireUI();
+  document.getElementById('shopOv').classList.add('hidden');
+  document.getElementById('depOv').classList.add('hidden');
+  NET.started = true;
+  if (s.pick >= 0) {            // 选主国阶段
+    NET.phase = 'pick';
+    pickIdx = s.pick;
+    netShowPick(s.pick);
+    return;
+  }
+  NET.phase = 'play';
+  document.getElementById('startOv').classList.add('hidden');
+  loadPlayer(turn);
+  netShowHud();
+  renderShop();
+  updateMoneyUI();
+  updateTurnUI();
+  renderPlayerInfo();
+  syncMainMap();
+  select(myCountry);
+  redrawDeployed();
+  if (gameOver) {
+    if (s.win && !NET.endShown) { NET.endShown = true; finishGame(s.win.w, s.win.r); }
+    else aiLockUI(true);
+  } else netGate();
+}
+function netApplyAct(seat, a) {
+  if (!netIsHost() || !NET.started || !a) return;
+  if (a.k === 'pick') {
+    if (pickIdx !== seat) return;
+    chooseCountry(a.c, seat);
+    return;
+  }
+  if (turn !== seat || gameOver) { netSend({ t: 'acterr', to: seat, r: '还没轮到你行动' }); return; }
+  if (a.k === 'buy') { if (buyItem(a.v)) netSync(); return; }
+  if (a.k === 'end') { endTurn(false); return; }
+  if (a.k === 'place') {
+    const ok = netApplyPlace(a.u, { x: a.x, y: a.y });
+    placing = null;
+    if (ok) netSync();
+    return;
+  }
+  if (a.k === 'fire') {
+    const u = netFindUnit(a.x, a.y);
+    if (!u || u.lastShot === inGameDay || ITEMS[u.k].atk <= 0) return;
+    armed = u;
+    if (fireAt(a.c)) netSync();
+    return;
+  }
+}
+function netStart() {
+  gameMode = 'online';
+  nPlayers = NET.size;
+  NET.started = true; NET.phase = 'pick'; NET.endShown = false; NET.last = null;
+  const names = (NET.room && NET.room.seats || []).map(s => s ? (s.name || ('玩家' + 1)) : '');
+  resetWorld();
+  for (let i = 0; i < nPlayers; i++) players[i].name = names[i] || ('玩家' + (i + 1));
+  document.getElementById('modeOv').classList.add('hidden');
+  netShowHud();
+  if (netIsHost()) { netShowPick(0); netSync(); }
+  else {
+    document.getElementById('startOv').classList.add('hidden');
+    netGatePick();      // 浮层先藏起来，但按钮也一并锁上，避免任何路径提前显示时能误点
+    aiLockUI(true);
+    toast('已开局，等待 P1 选择主国…');
+  }
+}
+function netBackToLobby(msg) {
+  NET.started = false; NET.phase = 'lobby'; NET.endShown = false; NET.last = null;
+  gameMode = 'menu'; gameOver = false;
+  document.getElementById('endOv').classList.add('hidden');
+  ['startOv', 'shopOv', 'depOv'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('hudLeft').style.display = 'none';
+  ['duoInfo', 'turnTag', 'turnTimer', 'endTurn'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('onlineOv').classList.remove('hidden');
+  document.getElementById('onLobby').classList.remove('hidden');
+  document.getElementById('onSetup').classList.add('hidden');
+  document.getElementById('onStatus').textContent = msg || '本局结束 · 等待房主开始新一局';
+}
+function netRenderRoom() {
+  const r = NET.room, box = document.getElementById('onSeats');
+  if (!r || !box) return;
+  NET.size = r.size;
+  let h = '';
+  for (let i = 0; i < r.size; i++) {
+    const s = r.seats[i], mine = i === NET.seat;
+    h += '<div class="onseat' + (s ? ' on' : '') + '"><b style="color:' + PLAYER_COLORS[i] + '">P' + (i + 1) + '</b>' +
+      (s ? ((s.name || ('玩家' + (i + 1))) + (mine ? '（你）' : '') + (i === 0 ? ' · 房主' : '')) : '等待中…') + '</div>';
+  }
+  box.innerHTML = h;
+  const n = r.seats.filter(x => x).length;
+  const st = document.getElementById('onStatus');
+  if (r.started) st.textContent = '对局进行中…';
+  else if (n >= r.size) st.textContent = netIsHost() ? '人齐了，可以开始游戏' : '人齐了，等待房主开始…';
+  else st.textContent = '等待其他玩家加入…（' + n + '/' + r.size + '）';
+  document.getElementById('onStart').classList.toggle('hidden', !(n >= r.size && !r.started && netIsHost()));
+}
+function netHint(msg, color) {
+  const h = document.getElementById('onHint');
+  h.textContent = msg;
+  h.style.color = color || '';
+  document.getElementById('onLobby').classList.add('hidden');
+  document.getElementById('onSetup').classList.remove('hidden');
+  document.getElementById('onlineOv').classList.remove('hidden');
+}
+function netSetupError(msg) {
+  netHint('✖ ' + msg, '#ff8a8a');
+  netLeave();
+}
+function netLeave() {
+  if (NET.peer) {
+    try { if (NET.connHost) NET.connHost.close(); } catch (e) {}
+    try { NET.peer.destroy(); } catch (e) {}
+    NET.peer = null; NET.connHost = null;
+    NET.conns = {}; NET.seat = -1; NET.room = null;
+  }
+}
+function netJoin() {
+  const inp = document.getElementById('onName');
+  const nm = (inp.value || '').trim().slice(0, 12) || ('玩家' + Math.floor(Math.random() * 900 + 100));
+  inp.value = nm; NET.myName = nm;
+  const on = document.querySelector('#onSizeSeg button.on');
+  const size = parseInt(on ? on.getAttribute('data-s') : '2', 10);
+  NET.size = size;
+  netCreateRoom(nm, size);
+}
+function netCreateRoom(myName, size) {
+  NET.room = { t: 'room', size: size, seats: [null, null, null], started: false };
+  NET.room.seats[0] = { name: myName };
+  NET.seat = 0;
+  document.getElementById('onSetup').classList.add('hidden');
+  document.getElementById('onLobby').classList.remove('hidden');
+  document.getElementById('onStatus').textContent = '正在生成房间码…';
+  const peer = new Peer();
+  NET.peer = peer;
+  peer.on('open', id => {
+    NET.key = id;
+    if (NET.closing || !NET.peer) return;
+    netRenderRoom();
+    document.getElementById('onStatus').textContent = '房间码：' + id + '· 把房间码发给朋友加入';
+  });
+  peer.on('connection', conn => {
+    if (NET.closing || NET.started) { try { conn.close(); } catch (e) {} return; }
+    conn.on('open', () => {
+      conn.on('data', data => {
+        let m = null;
+        try { m = JSON.parse(data); } catch (e) { return; }
+        netHostOnMsg(conn, m);
+      });
+      conn.on('close', () => netHostGone(conn));
+    });
+  });
+  peer.on('error', err => {
+    if (NET.closing || !NET.peer) return;
+    netSetupError('创建房间失败：' + (err && err.type ? err.type : '网络异常'));
+  });
+}
+function netHostOnMsg(conn, m) {
+  if (!m || !m.t || !NET.room) return;
+  if (m.t === 'join') {
+    const free = NET.room.seats.findIndex(s => !s);
+    if (free < 0) { netSendTo(conn, { t: 'reject', msg: '房间已满' }); return; }
+    conn._seat = free;
+    NET.room.seats[free] = { name: (m.name || '').trim().slice(0, 12) || ('玩家' + (free + 1)) };
+    NET.conns[free] = conn;
+    netSendTo(conn, { t: 'seated', seat: free, size: NET.room.size, name: NET.room.seats[free].name });
+    netBroadcastRoom();
+    return;
+  }
+  if (m.t === 'act') { netApplyAct(conn._seat, m.a); return; }
+  if (m.t === 'start') {
+    if (NET.room.seats.filter(s => s).length === NET.room.size) {
+      NET.room.started = true;
+      netBroadcastRoom();
+      netSend({ t: 'go', size: NET.room.size });
+      netStart();
+    }
+    return;
+  }
+}
+function netHostGone(conn) {
+  const s = conn._seat;
+  if (typeof s === 'number' && s > 0 && NET.room && NET.room.seats[s]) {
+    if (NET.started) {
+      aiLockUI(true);
+      toast((NET.room.seats[s].name || ('P' + (s + 1))) + ' 已离开，本局无法继续');
+    }
+    NET.room.seats[s] = null;
+    delete NET.conns[s];
+    netBroadcastRoom();
+  }
+}
+function netBroadcastRoom() {
+  const r = NET.room;
+  netSend({ t: 'room', size: r.size, seats: r.seats.slice(), started: r.started });
+  netRenderRoom();
+}
+function netCoreJoin() {
+  const inp = document.getElementById('onName');
+  const codeInp = document.getElementById('onCode');
+  const nm = (inp.value || '').trim().slice(0, 12) || ('玩家' + Math.floor(Math.random() * 900 + 100));
+  const code = (codeInp.value || '').trim();
+  if (!code) { netHint('请填写房主给你的房间码', '#ff8a8a'); return; }
+  inp.value = nm; NET.myName = nm;
+  const seg = document.querySelector('#onSizeSeg button.on');
+  NET.size = parseInt(seg ? seg.getAttribute('data-s') : '2', 10) || 2;
+  NET.closing = false;
+  document.getElementById('onSetup').classList.add('hidden');
+  document.getElementById('onLobby').classList.remove('hidden');
+  document.getElementById('onStatus').textContent = '正在连接房间 ' + code + ' …';
+  const peer = new Peer();
+  NET.peer = peer;
+  let joined = false;
+  const to = setTimeout(() => {
+    if (!joined && NET.peer) netSetupError('连接超时：请确认房间码正确，且房主在线');
+  }, 15000);
+  peer.on('open', () => {
+    const conn = peer.connect(code, { reliable: true });
+    NET.connHost = conn;
+    conn.on('open', () => { joined = true; netSend({ t: 'join', name: nm }); });
+    conn.on('data', data => {
+      let m = null;
+      try { m = JSON.parse(data); } catch (e) { return; }
+      netOnMsg(m);
+    });
+    conn.on('close', () => {
+      if (NET.closing) return;
+      clearTimeout(to);
+      if (NET.started) { NET.started = false; aiLockUI(true); toast('与房主断开连接，本局已中断'); }
+      else if (joined) netSetupError('与房主断开，请重新加入');
+    });
+  });
+  peer.on('error', err => {
+    if (NET.closing || !NET.peer) return;
+    clearTimeout(to);
+    netSetupError('加入失败：' + (err && err.type ? err.type : '网络异常'));
+  });
+}
+function netOnMsg(m) {
+  if (!m || !m.t) return;
+  if (m.t === 'seated') {
+    NET.seat = m.seat; NET.key = m.key || NET.key; NET.size = m.size || NET.size;
+    if (m.name) NET.myName = m.name;
+    document.getElementById('onSetup').classList.add('hidden');
+    document.getElementById('onLobby').classList.remove('hidden');
+    return;
+  }
+  if (m.t === 'room') {
+    NET.room = { t: 'room', size: m.size, seats: (m.seats || []), started: m.started };
+    NET.size = m.size;
+    if (!NET.room.started && NET.started) { netBackToLobby(); return; }
+    netRenderRoom();
+    return;
+  }
+  if (m.t === 'go') { NET.size = m.size || NET.size; netStart(); return; }
+  if (m.t === 'state') { netApplySnap(m.s); return; }
+  if (m.t === 'act') { netApplyAct(m.seat, m.a); return; }
+  if (m.t === 'actErr') { toast(m.r || '该动作无效'); return; }
+  if (m.t === 'quit') {
+    if (m.seat === 0) { aiLockUI(true); toast('房主已离开，本局无法继续'); }
+    else toast((m.name || ('P' + (m.seat + 1))) + ' 已离开');
+    return;
+  }
+  if (m.t === 'left') return;
+  if (m.t === 'lobby') { netBackToLobby(); return; }
+  if (m.t === 'reject') { netSetupError(m.msg || '无法加入房间'); return; }
+}
+document.getElementById('btnOnline').addEventListener('click', () => {
+  document.getElementById('modeOv').classList.add('hidden');
+  document.getElementById('onlineOv').classList.remove('hidden');
+  const nm = document.getElementById('onName');
+  if (!nm.value) nm.value = '玩家' + Math.floor(Math.random() * 900 + 100);
+  netHint('点「创建房间」开新局，把房间码发给朋友；朋友点「加入房间」输入房间码即可进场。', '');
+});
+document.getElementById('onJoin').addEventListener('click', netCoreJoin);
+document.getElementById('onHost').addEventListener('click', () => {
+  document.getElementById('onCode').classList.add('hidden');
+  document.getElementById('onJoin').classList.add('hidden');
+  document.getElementById('onHost').classList.add('hidden');
+  document.getElementById('onViewJoin').classList.remove('hidden');
+  netJoin();
+});
+document.getElementById('onViewJoin').addEventListener('click', () => {
+  document.getElementById('onCode').classList.remove('hidden');
+  document.getElementById('onJoin').classList.remove('hidden');
+  document.getElementById('onHost').classList.remove('hidden');
+});
+document.getElementById('onBack').addEventListener('click', () => {
+  netLeave();
+  document.getElementById('onlineOv').classList.add('hidden');
+  document.getElementById('modeOv').classList.remove('hidden');
+});
+document.getElementById('onLeave').addEventListener('click', () => { netLeave(); location.reload(); });
+document.getElementById('onStart').addEventListener('click', () => {
+  if (!netIsHost() || !NET.room) return;
+  if (NET.room.seats.filter(s => s).length !== NET.room.size) return;
+  NET.room.started = true;
+  netBroadcastRoom();
+  netSend({ t: 'go', size: NET.room.size });
+  netStart();
+});
+document.getElementById('onCode').addEventListener('click', () => document.getElementById('onCode').select());
+document.querySelectorAll('#onSizeSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#onSizeSeg button').forEach(x => x.classList.toggle('on', x === b));
+  });
+});
+window.addEventListener('beforeunload', () => {
+  netLeave();
+});
+
+window.addEventListener('load', () => {
+  const mb = document.querySelector('.mapbox');
+  mb.scrollLeft = (mb.scrollWidth - mb.clientWidth) / 2;
+  mb.scrollTop = (mb.scrollHeight - mb.clientHeight) / 2;
+});
+</script>
+</body>
+</html>
