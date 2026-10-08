@@ -330,13 +330,16 @@
         <div class="overlay" id="onlineScreen">
             <h2>ONLINE 联机</h2>
             <input class="name-input" id="nameInput" maxlength="16" placeholder="输入你的名字" />
-            <button class="menu-btn" id="nameJoinBtn">加入游戏</button>
+            <input class="name-input" id="roomCodeInput" maxlength="8" placeholder="房间码" style="display:none;" />
+            <button class="menu-btn" id="createRoomBtn">创建房间</button>
+            <button class="menu-btn" id="joinRoomBtn">加入房间</button>
             <div class="status-text" id="onlineStatus"></div>
             <div class="countdown" id="countdown" style="display:none;"></div>
             <button class="overlay-close" id="onlineClose">返回</button>
         </div>
     </div>
 
+    <script src="peerjs.min.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -375,9 +378,12 @@
         const TOTAL_LEVELS = 12;
         let onlineRole = null;
         let remoteKeys = { w: false, a: false, d: false, s: false };
-        let ws = null;
+        let onlinePeer = null;
+        let onlineConn = null;
         let onlineJoined = false;
         let onlineStarted = false;
+        let myName = '';
+        let roomCode = '';
         
         const platforms = [];
         
@@ -411,9 +417,9 @@
         }
         
         function sendMyInput() {
-            if (!ws || ws.readyState !== 1) return;
+            if (!onlineConn || !onlineConn.open) return;
             const k = onlineRole === 'p1' ? keys1 : keys2;
-            ws.send(JSON.stringify({
+            onlineConn.send(JSON.stringify({
                 type: 'input',
                 keys: { w: k.w, a: k.a, d: k.d, s: k.s }
             }));
@@ -1501,43 +1507,107 @@
         document.getElementById('singleBtn').addEventListener('click', () => startGame('single'));
         document.getElementById('dualBtn').addEventListener('click', () => startGame('dual'));
         
-        function connectOnline() {
-            const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-            const host = location.host || 'localhost:3000';
-            ws = new WebSocket(proto + host);
-            document.getElementById('onlineStatus').textContent = '正在连接服务器...';
-            ws.onopen = () => {
-                document.getElementById('onlineStatus').textContent = '已连接，请输入名字并加入';
-            };
-            ws.onmessage = (e) => {
-                let msg;
-                try { msg = JSON.parse(e.data); } catch (err) { return; }
-                if (msg.type === 'state') {
-                    if (onlineJoined) {
-                        const others = (msg.players || []).filter(p => p.id !== ws.myId);
-                        if (others.length > 0) {
-                            document.getElementById('onlineStatus').textContent = '对手: ' + others.map(p => p.name).join(', ');
-                        } else {
-                            document.getElementById('onlineStatus').textContent = '等待 P2 加入...';
-                        }
-                    }
-                } else if (msg.type === 'welcome') {
-                    ws.myId = msg.id;
-                } else if (msg.type === 'role') {
-                    onlineRole = msg.role;
-                } else if (msg.type === 'input') {
-                    if (msg.id !== ws.myId) {
-                        remoteKeys = msg.keys || { w: false, a: false, d: false, s: false };
-                    }
-                } else if (msg.type === 'countdown') {
-                    startCountdown();
-                }
-            };
-            ws.onclose = () => {
-                document.getElementById('onlineStatus').textContent = '连接已断开';
-            };
+        function peerMsg(msg) {
+            if (!msg || !msg.type) return;
+            if (msg.type === 'input') {
+                remoteKeys = msg.keys || { w: false, a: false, d: false, s: false };
+            } else if (msg.type === 'countdown') {
+                startCountdown();
+            } else if (msg.type === 'opName') {
+                document.getElementById('onlineStatus').textContent = '对手: ' + msg.name + ' | 你是 ' + (onlineRole === 'p1' ? 'P1(红, WASD)' : 'P2(黄, 方向键)');
+            } else if (msg.type === 'start') {
+                onlineStarted = true;
+                mode = 'online';
+                score1 = 0;
+                score2 = 0;
+                document.getElementById('onlineScreen').style.display = 'none';
+                loadLevel(1);
+            }
         }
-        
+
+        function onlineInit(conn, role) {
+            onlineConn = conn;
+            onlineRole = role;
+            onlineJoined = true;
+            document.getElementById('onlineStatus').textContent = '已连接! 你是 P' + (role === 'p1' ? '1(红)·WASD' : '2(黄)·方向键');
+            conn.send(JSON.stringify({ type: 'opName', name: myName }));
+            if (role === 'p1') {
+                conn.send(JSON.stringify({ type: 'countdown' }));
+                startCountdown();
+            }
+        }
+
+        function createOnline() {
+            if (onlineConn) return;
+            myName = document.getElementById('nameInput').value.trim();
+            if (!myName) {
+                document.getElementById('onlineStatus').textContent = '请输入名字';
+                return;
+            }
+            onlinePeer = new Peer();
+            document.getElementById('onlineStatus').textContent = '正在创建房间...';
+            onlinePeer.on('open', (id) => {
+                roomCode = id;
+                document.getElementById('roomCodeInput').style.display = 'block';
+                document.getElementById('roomCodeInput').value = roomCode;
+                document.getElementById('roomCodeInput').select();
+                document.getElementById('onlineStatus').textContent = '房间码已生成(已选中，Ctrl+C复制发给朋友): ' + roomCode + ' | 等待对方加入...';
+            });
+            onlinePeer.on('error', (err) => {
+                document.getElementById('onlineStatus').textContent = '创建失败: ' + (err.type || '未知错误') + '，请重试';
+            });
+            onlinePeer.on('connection', (conn) => {
+                conn.on('open', () => {
+                    conn.on('data', (raw) => {
+                        let m;
+                        try { m = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return; }
+                        peerMsg(m);
+                    });
+                    conn.on('close', () => {
+                        document.getElementById('onlineStatus').textContent = '对手已断开';
+                    });
+                    onlineInit(conn, 'p1');
+                });
+            });
+        }
+
+        function joinOnline() {
+            if (onlineConn) return;
+            myName = document.getElementById('nameInput').value.trim();
+            const code = document.getElementById('roomCodeInput').value.trim();
+            if (!myName) {
+                document.getElementById('onlineStatus').textContent = '请输入名字';
+                return;
+            }
+            if (!code) {
+                document.getElementById('onlineStatus').textContent = '请输入房间码';
+                return;
+            }
+            document.getElementById('roomCodeInput').style.display = 'block';
+            document.getElementById('onlineStatus').textContent = '正在连接房间，请稍候...';
+            onlinePeer = new Peer();
+            onlinePeer.on('open', () => {
+                const conn = onlinePeer.connect(code, { reliable: true });
+                conn.on('open', () => {
+                    conn.on('data', (raw) => {
+                        let m;
+                        try { m = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return; }
+                        peerMsg(m);
+                    });
+                    conn.on('close', () => {
+                        document.getElementById('onlineStatus').textContent = '连接已断开';
+                    });
+                    onlineInit(conn, 'p2');
+                });
+                conn.on('error', () => {
+                    document.getElementById('onlineStatus').textContent = '加入失败: 房间码无效，请检查';
+                });
+            });
+            onlinePeer.on('error', (err) => {
+                document.getElementById('onlineStatus').textContent = '连接失败: ' + (err.type || '未知错误');
+            });
+        }
+
         function startCountdown() {
             let n = 3;
             const el = document.getElementById('countdown');
@@ -1555,7 +1625,7 @@
                 }
             }, 1000);
         }
-        
+
         function beginOnlineGame() {
             onlineStarted = true;
             mode = 'online';
@@ -1564,30 +1634,28 @@
             document.getElementById('onlineScreen').style.display = 'none';
             loadLevel(1);
         }
-        
+
         document.getElementById('onlineBtn').addEventListener('click', () => {
             document.getElementById('menuScreen').style.display = 'none';
             document.getElementById('onlineScreen').style.display = 'flex';
-            connectOnline();
+            document.getElementById('onlineStatus').textContent = '';
+            document.getElementById('roomCodeInput').value = '';
         });
-        
-        document.getElementById('nameJoinBtn').addEventListener('click', () => {
-            const name = document.getElementById('nameInput').value.trim();
-            if (!name) {
-                document.getElementById('onlineStatus').textContent = '请输入名字';
-                return;
-            }
-            if (!ws || ws.readyState !== 1) {
-                document.getElementById('onlineStatus').textContent = '未连接服务器';
-                return;
-            }
-            onlineJoined = true;
-            ws.send(JSON.stringify({ type: 'join', name: name }));
-            document.getElementById('onlineStatus').textContent = '等待 P2 加入...';
+
+        document.getElementById('createRoomBtn').addEventListener('click', () => {
+            createOnline();
         });
-        
+
+        document.getElementById('joinRoomBtn').addEventListener('click', () => {
+            document.getElementById('roomCodeInput').style.display = 'block';
+            joinOnline();
+        });
+
         document.getElementById('onlineClose').addEventListener('click', () => {
-            if (ws) ws.close();
+            if (onlineConn) { try { onlineConn.close(); } catch (e) {} }
+            if (onlinePeer) { try { onlinePeer.destroy(); } catch (e) {} }
+            onlinePeer = null;
+            onlineConn = null;
             document.getElementById('onlineScreen').style.display = 'none';
             document.getElementById('menuScreen').style.display = 'flex';
             onlineJoined = false;

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>游戏合集 - 小游戏中心</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: #07090f;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(225, 6, 0, .16), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(0, 200, 255, .10), transparent);
+  color: #eef2f7;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px 32px;
+}
+
+header { text-align: center; margin-bottom: 44px; }
+
+.logo {
+  font-size: clamp(30px, 6vw, 46px);
+  font-weight: 800;
+  letter-spacing: 4px;
+}
+.logo .cn { color: #e10600; }
+.logo .en {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 8px;
+  color: #6b7686;
+  margin-top: 8px;
+}
+
+.sub {
+  margin-top: 14px;
+  color: #8a94a3;
+  font-size: 15px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 26px;
+  width: 100%;
+  max-width: 860px;
+}
+
+.card {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(160deg, #11151f 0%, #0c0f17 100%);
+  border: 1px solid #232a38;
+  border-radius: 16px;
+  padding: 30px 28px 26px;
+  overflow: hidden;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--accent);
+  opacity: .85;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-6px);
+  border-color: var(--accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .55), 0 0 0 1px var(--accent);
+  outline: none;
+}
+.card:active { transform: translateY(-3px); }
+
+.card-icon {
+  width: 74px;
+  height: 74px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  background: #171c28;
+  border: 1px solid #2a3242;
+  margin-bottom: 20px;
+}
+
+.card h2 { font-size: 23px; font-weight: 700; letter-spacing: 1px; }
+.card h2 .badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.card p {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #97a1b0;
+  min-height: 74px;
+}
+
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.tags span {
+  font-size: 12px;
+  color: #7c8698;
+  background: #171c28;
+  border: 1px solid #262e3d;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.play {
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+.play::after { content: "▶"; font-size: 12px; transition: transform .2s; }
+.card:hover .play::after { transform: translateX(5px); }
+
+.card.disabled {
+  opacity: .5;
+  filter: grayscale(.4);
+  cursor: default;
+}
+.card.disabled:hover {
+  transform: none;
+  border-color: #232a38;
+  box-shadow: none;
+}
+
+footer {
+  margin-top: 46px;
+  color: #4d5563;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.8;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="cn">游戏合集</span><span class="en">GAME&nbsp;HUB</span></div>
+  <div class="sub">选一个游戏开始吧</div>
+</header>
+
+<main class="grid">
+
+  <div class="card disabled" style="--accent:#e10600">
+    <div class="card-icon">🏁</div>
+    <h2>F1 FREE GAME <span class="badge">敬请期待</span></h2>
+    <p>F1 赛车游戏（目前在另一台电脑上），等文件同步过来就会出现在这里。</p>
+    <div class="tags"><span>赛车</span><span>即将上线</span></div>
+    <div class="play">敬请期待</div>
+  </div>
+
+  <a class="card" style="--accent:#26d07c" href="level-devil-game.html">
+    <div class="card-icon">😇</div>
+    <h2>LEVEL ANGEL <span class="badge">关卡闯关</span></h2>
+    <p>12 个陷阱关卡等你挑战。支持单人、同屏双人和在线联机，看谁先到达出口。</p>
+    <div class="tags"><span>像素</span><span>双人</span><span>在线联机</span></div>
+    <div class="play">进入游戏</div>
+  </a>
+
+  <div class="card disabled" style="--accent:#5b8cff">
+    <div class="card-icon">🚧</div>
+    <h2>更多游戏 <span class="badge">敬请期待</span></h2>
+    <p>新的游戏正在制作中，敬请期待。</p>
+    <div class="tags"><span>开发中</span></div>
+  </div>
+
+</main>
+
+<footer>
+  打开游戏后如需返回，点击浏览器的“后退”按钮即可<br>
+  LEVEL ANGEL 支持在线联机 · 两个玩家打开同一链接即可对战
+</footer>
+
+</body>
+</html>
