@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level Angel - 关卡游戏</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .game-container {
+            position: relative;
+            border: 4px solid #e94560;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+        }
+        
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e94560;
+            font-size: 24px;
+            text-shadow: 2px 2px 0px #000;
+            line-height: 1.6;
+        }
+        
+        .ui .time-display {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #eee;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .death-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        
+        .death-screen h1 {
+            color: #e94560;
+            font-size: 48px;
+            text-shadow: 2px 2px 0px #000;
+        }
+        
+        #respawnBtn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background: #e94560;
+            color: #fff;
+            border: 3px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 3px 3px 0px #000;
+        }
+        
+        #respawnBtn:hover {
+            background: #ff5c77;
+        }
+        
+        #operatorBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background: #222244;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #000;
+            z-index: 11;
+        }
+        
+        #operatorBtn:hover {
+            background: #2a2a55;
+        }
+        
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 20, 0.92);
+            z-index: 20;
+        }
+        
+        .overlay h2 {
+            color: #00ffcc;
+            font-size: 28px;
+            text-shadow: 2px 2px 0px #000;
+            margin-bottom: 20px;
+        }
+        
+        #passDisplay {
+            color: #fff;
+            font-size: 30px;
+            letter-spacing: 10px;
+            background: #111122;
+            border: 2px solid #00ffcc;
+            border-radius: 4px;
+            padding: 8px 20px;
+            margin-bottom: 15px;
+            min-width: 200px;
+            text-align: center;
+        }
+        
+        .passpad {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .pass-key {
+            height: 50px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background: #222244;
+            color: #fff;
+            border: 2px solid #444466;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .pass-key:hover {
+            background: #333366;
+        }
+        
+        .pass-key.wide {
+            grid-column: span 1;
+        }
+        
+        #passError {
+            color: #ff3355;
+            font-size: 16px;
+            min-height: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .op-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 80px);
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .op-cell {
+            height: 55px;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background: #222244;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #000;
+        }
+        
+        .op-cell:hover {
+            background: #2a2a55;
+        }
+        
+        .overlay-close {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            background: #444;
+            color: #fff;
+            border: 2px solid #666;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #menuScreen {
+            z-index: 30;
+        }
+        
+        .menu-title {
+            color: #ffd700;
+            font-size: 72px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 4px 4px 0px #000;
+            margin-bottom: 50px;
+            letter-spacing: 4px;
+        }
+        
+        .menu-btn {
+            width: 260px;
+            margin: 12px 0;
+            padding: 16px 0;
+            font-size: 26px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            background: #222244;
+            color: #fff;
+            border: 3px solid #e94560;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #000;
+        }
+        
+        .menu-btn:hover {
+            background: #2a2a55;
+            color: #ffd700;
+        }
+        
+        #onlineScreen {
+            z-index: 30;
+        }
+        
+        #onlineScreen h2 {
+            color: #00ffcc;
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .name-input {
+            width: 240px;
+            padding: 10px 14px;
+            font-size: 22px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            background: #111122;
+            color: #fff;
+            border: 2px solid #00ffcc;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+        
+        .status-text {
+            color: #ffd700;
+            font-size: 20px;
+            min-height: 30px;
+            margin: 10px 0;
+        }
+        
+        .countdown {
+            color: #ffd700;
+            font-size: 80px;
+            font-weight: bold;
+            text-shadow: 4px 4px 0px #000;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="960" height="640"></canvas>
+        <div class="ui">
+            <div id="levelLabel">LEVEL 1</div>
+            <div class="time-display" id="timeDisplay">当前 0.0s</div>
+            <div class="time-display" id="levelTimeDisplay"></div>
+        </div>
+        <div class="death-screen" id="deathScreen">
+            <h1>你死了</h1>
+            <button id="respawnBtn">重生</button>
+        </div>
+        <button id="operatorBtn">operator mode</button>
+        <div class="overlay" id="passLock">
+            <h2>输入密码</h2>
+            <div id="passDisplay"></div>
+            <div id="passError"></div>
+            <div class="passpad" id="passpad"></div>
+            <button class="overlay-close" id="passClose">取消</button>
+        </div>
+        <div class="overlay" id="operatorPanel">
+            <h2>OPERATOR MODE</h2>
+            <div class="op-grid" id="opGrid"></div>
+            <button class="overlay-close" id="opClose">关闭</button>
+        </div>
+        <div class="controls">
+            P1: W跳 A左 D右 | P2: ↑跳 ←左 →右
+        </div>
+        <div class="overlay" id="menuScreen" style="display: flex;">
+            <div class="menu-title">Level Angel</div>
+            <button class="menu-btn" id="singleBtn">单人模式</button>
+            <button class="menu-btn" id="dualBtn">双人模式</button>
+            <button class="menu-btn" id="onlineBtn">Online 模式</button>
+        </div>
+        <div class="overlay" id="onlineScreen">
+            <h2>ONLINE 联机</h2>
+            <input class="name-input" id="nameInput" maxlength="16" placeholder="输入你的名字" />
+            <button class="menu-btn" id="nameJoinBtn">加入游戏</button>
+            <div class="status-text" id="onlineStatus"></div>
+            <div class="countdown" id="countdown" style="display:none;"></div>
+            <button class="overlay-close" id="onlineClose">返回</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const PIXEL_SIZE = 32;
+        const GRAVITY = 0.8;
+        const JUMP_FORCE = -15;
+        const MOVE_SPEED = 8;
+        const HOLE_TIME = 180;
+        const CHASE_SPEED = 7;
+        
+        const keys1 = { w: false, a: false, d: false, s: false };
+        const keys2 = { w: false, a: false, d: false, s: false };
+        
+        let mode = 'menu';
+        let score1 = 0;
+        let score2 = 0;
+        let currentLevel = 1;
+        let holeTriggered = false;
+        let activeHoles = [];
+        let gameComplete = false;
+        let dead = false;
+        let chaseActive = false;
+        let chaseFront = 0;
+        let nextTrapHole = 0;
+        let movingPlatforms = [];
+        let vanishingPlatforms = [];
+        let portals = [];
+        let gravityZone = null;
+        let controlsInverted = false;
+        let iceMode = false;
+        let levelStartTime = 0;
+        let levelRecorded = false;
+        let levelScored = false;
+        const levelTimes = {};
+        const TOTAL_LEVELS = 12;
+        let onlineRole = null;
+        let remoteKeys = { w: false, a: false, d: false, s: false };
+        let ws = null;
+        let onlineJoined = false;
+        let onlineStarted = false;
+        
+        const platforms = [];
+        
+        function resetPlayerTo(p) {
+            p.x = 100;
+            p.y = canvas.height - PIXEL_SIZE - PIXEL_SIZE * 2;
+            p.velX = 0;
+            p.velY = 0;
+            p.gravityFlipped = false;
+            p.finished = false;
+        }
+        
+        function resetPlayers() {
+            resetPlayerTo(player1);
+            resetPlayerTo(player2);
+        }
+        
+        function activePlayers() {
+            return (mode === 'dual' || mode === 'online') ? [player1, player2] : [player1];
+        }
+        
+        function inputFor(p) {
+            if (mode === 'online') {
+                if (onlineRole === 'p1') {
+                    return p === player1 ? keys1 : remoteKeys;
+                } else {
+                    return p === player2 ? keys2 : remoteKeys;
+                }
+            }
+            return p === player1 ? keys1 : keys2;
+        }
+        
+        function sendMyInput() {
+            if (!ws || ws.readyState !== 1) return;
+            const k = onlineRole === 'p1' ? keys1 : keys2;
+            ws.send(JSON.stringify({
+                type: 'input',
+                keys: { w: k.w, a: k.a, d: k.d, s: k.s }
+            }));
+        }
+        
+        const player1 = {
+            x: 100,
+            y: canvas.height - PIXEL_SIZE - PIXEL_SIZE * 2,
+            width: PIXEL_SIZE,
+            height: PIXEL_SIZE * 2,
+            velX: 0,
+            velY: 0,
+            onGround: false,
+            color: '#e94560',
+            gravityFlipped: false,
+            finished: false
+        };
+        
+        const player2 = {
+            x: 100,
+            y: canvas.height - PIXEL_SIZE - PIXEL_SIZE * 2,
+            width: PIXEL_SIZE,
+            height: PIXEL_SIZE * 2,
+            velX: 0,
+            velY: 0,
+            onGround: false,
+            color: '#ffcc00',
+            gravityFlipped: false,
+            finished: false
+        };
+        
+        function isInHole(x, y, w, h) {
+            if (currentLevel === 3 && chaseActive) {
+                if (x + w <= chaseFront &&
+                    y < canvas.height - PIXEL_SIZE + PIXEL_SIZE * 20 &&
+                    y + h > canvas.height - PIXEL_SIZE) {
+                    return true;
+                }
+            }
+            for (const hole of activeHoles) {
+                if (x < hole.x + hole.width &&
+                    x + w > hole.x &&
+                    y < hole.y + hole.height &&
+                    y + h > hole.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function loadLevel(n) {
+            currentLevel = n;
+            holeTriggered = false;
+            activeHoles = [];
+            gameComplete = false;
+            dead = false;
+            levelScored = false;
+            chaseActive = false;
+            chaseFront = 0;
+            nextTrapHole = 200;
+            movingPlatforms = [];
+            vanishingPlatforms = [];
+            portals = [];
+            gravityZone = null;
+            controlsInverted = false;
+            iceMode = false;
+            platforms.length = 0;
+            
+            for (let x = 0; x < canvas.width; x += PIXEL_SIZE) {
+                platforms.push({
+                    x, y: canvas.height - PIXEL_SIZE,
+                    width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#16213e'
+                });
+            }
+            
+            if (n === 1) {
+                for (let x = 200; x < 350; x += PIXEL_SIZE) {
+                    platforms.push({
+                        x, y: canvas.height - PIXEL_SIZE * 3,
+                        width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#0f3460'
+                    });
+                }
+                for (let x = 500; x < 650; x += PIXEL_SIZE) {
+                    platforms.push({
+                        x, y: canvas.height - PIXEL_SIZE * 4,
+                        width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#0f3460'
+                    });
+                }
+            }
+            
+            if (n === 2) {
+                for (let x = 700; x < 800; x += PIXEL_SIZE) {
+                    platforms.push({
+                        x, y: canvas.height - PIXEL_SIZE * 3,
+                        width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#0f3460'
+                    });
+                }
+            }
+            
+            if (n === 4) {
+                for (let x = 400; x < 550; x += PIXEL_SIZE) {
+                    platforms.push({
+                        x, y: canvas.height - PIXEL_SIZE * 3,
+                        width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#0f3460'
+                    });
+                }
+                for (let x = 700; x < 750; x += PIXEL_SIZE) {
+                    platforms.push({
+                        x, y: canvas.height - PIXEL_SIZE * 4,
+                        width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#0f3460'
+                    });
+                }
+            }
+            
+            if (n === 5) {
+                const p = [];
+                p.push({ x: 170, y: 500, w: 130, h: 20 });
+                p.push({ x: 340, y: 440, w: 130, h: 20 });
+                p.push({ x: 520, y: 370, w: 140, h: 20 });
+                p.push({ x: 680, y: 300, w: 140, h: 20 });
+                p.push({ x: 820, y: 250, w: 100, h: 20 });
+                for (const pl of p) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+            }
+            
+            if (n === 6) {
+                const p = [];
+                p.push({ x: 150, y: 520, w: 130, h: 20 });
+                p.push({ x: 330, y: 450, w: 130, h: 20 });
+                p.push({ x: 210, y: 380, w: 130, h: 20 });
+                p.push({ x: 380, y: 310, w: 130, h: 20 });
+                p.push({ x: 820, y: 250, w: 100, h: 20 });
+                for (const pl of p) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+                movingPlatforms.push({
+                    x: 620, y: 360, w: PIXEL_SIZE * 2, h: 20,
+                    minX: 545, maxX: 760, dir: 1, speed: 1.5
+                });
+            } else {
+                movingPlatforms = [];
+            }
+            
+            if (n === 7) {
+                const staticP = [];
+                staticP.push({ x: 150, y: 520, w: 130, h: 20 });
+                staticP.push({ x: 330, y: 450, w: 130, h: 20 });
+                staticP.push({ x: 210, y: 380, w: 130, h: 20 });
+                staticP.push({ x: 380, y: 310, w: 130, h: 20 });
+                for (const pl of staticP) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+                
+                vanishingPlatforms = [];
+                const vp = [
+                    { x: 560, y: 310, w: 96, h: 20 },
+                    { x: 700, y: 270, w: 96, h: 20 },
+                    { x: 840, y: 230, w: 96, h: 20 },
+                    { x: 700, y: 190, w: 96, h: 20 },
+                    { x: 560, y: 150, w: 96, h: 20 },
+                    { x: 700, y: 110, w: 96, h: 20 },
+                    { x: 840, y: 110, w: 96, h: 20 }
+                ];
+                for (const pl of vp) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+                for (const pl of vp) {
+                    vanishingPlatforms.push({
+                        x0: Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE,
+                        w: pl.w,
+                        y: pl.y,
+                        touchedAt: -1
+                    });
+                }
+            }
+            
+            if (n === 8) {
+                portals = [];
+                for (let y = 160; y < canvas.height - PIXEL_SIZE; y += PIXEL_SIZE) {
+                    for (let x = 640; x < 704; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y,
+                            width: PIXEL_SIZE,
+                            height: PIXEL_SIZE,
+                            color: '#555566'
+                        });
+                    }
+                }
+                portals.push({
+                    x: 400, y: canvas.height - PIXEL_SIZE * 3,
+                    w: PIXEL_SIZE * 2, h: PIXEL_SIZE * 2,
+                    tx: 150, ty: canvas.height - PIXEL_SIZE - PIXEL_SIZE * 2,
+                    color: '#ff3355', label: '送回起点'
+                });
+                portals.push({
+                    x: 540, y: canvas.height - PIXEL_SIZE * 3,
+                    w: PIXEL_SIZE * 2, h: PIXEL_SIZE * 2,
+                    tx: 750, ty: canvas.height - PIXEL_SIZE - PIXEL_SIZE * 2,
+                    color: '#33ff88', label: '墙的另一边'
+                });
+            }
+            
+            if (n === 9) {
+                gravityZone = { x: 256, y: 0, w: 480, h: canvas.height };
+                const tops = [
+                    { x: 256, y: 64, w: 112 },
+                    { x: 448, y: 64, w: 112 },
+                    { x: 640, y: 64, w: 96 }
+                ];
+                for (const t of tops) {
+                    for (let x = t.x; x < t.x + t.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x, y: t.y, width: PIXEL_SIZE, height: PIXEL_SIZE, color: '#aa88ff'
+                        });
+                    }
+                }
+            }
+            
+            if (n === 10) {
+                const sp = [
+                    { x: 150, y: 520, w: 160, h: 20 },
+                    { x: 680, y: 380, w: 130, h: 20 }
+                ];
+                for (const pl of sp) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+                movingPlatforms.push({
+                    x: 420, y: 450, w: PIXEL_SIZE * 2, h: 20,
+                    minX: 360, maxX: 620, dir: 1, speed: 1.4
+                });
+                movingPlatforms.push({
+                    x: 700, y: 280, w: PIXEL_SIZE * 2, h: 20,
+                    minX: 660, maxX: 890, dir: 1, speed: 1.4
+                });
+            }
+            
+            if (n === 11) {
+                controlsInverted = true;
+                const sp = [
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 330, y: 440, w: 130, h: 20 },
+                    { x: 510, y: 360, w: 130, h: 20 },
+                    { x: 690, y: 280, w: 130, h: 20 }
+                ];
+                for (const pl of sp) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#0f3460'
+                        });
+                    }
+                }
+            }
+            
+            if (n === 12) {
+                iceMode = true;
+                const sp = [
+                    { x: 140, y: 520, w: 160, h: 20 },
+                    { x: 380, y: 440, w: 160, h: 20 },
+                    { x: 110, y: 360, w: 160, h: 20 },
+                    { x: 620, y: 440, w: 160, h: 20 },
+                    { x: 860, y: 360, w: 100, h: 20 }
+                ];
+                for (const pl of sp) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x,
+                            y: pl.y,
+                            width: PIXEL_SIZE,
+                            height: pl.h,
+                            color: '#7fc8ff'
+                        });
+                    }
+                }
+            }
+            
+            document.getElementById('levelLabel').textContent = 'LEVEL ' + n;
+            document.getElementById('deathScreen').style.display = 'none';
+            levelStartTime = performance.now();
+            levelRecorded = false;
+            positionElevator();
+            resetPlayers();
+        }
+        
+        const elevator = {
+            x: canvas.width - PIXEL_SIZE * 3,
+            y: canvas.height - PIXEL_SIZE * 5,
+            width: PIXEL_SIZE * 2,
+            height: PIXEL_SIZE * 5,
+            color: '#ffd700'
+        };
+        
+        function positionElevator() {
+            if (currentLevel === 5) {
+                elevator.x = 820;
+                elevator.y = 250 - PIXEL_SIZE * 4;
+            } else if (currentLevel === 6) {
+                elevator.x = 860;
+                elevator.y = 250 - PIXEL_SIZE * 4;
+            } else if (currentLevel === 7) {
+                elevator.x = 880;
+                elevator.y = 110 - PIXEL_SIZE;
+            } else if (currentLevel === 10) {
+                elevator.x = 900;
+                elevator.y = 250 - PIXEL_SIZE * 4;
+            } else if (currentLevel === 11) {
+                elevator.x = 880;
+                elevator.y = 280 - PIXEL_SIZE * 4;
+            } else if (currentLevel === 12) {
+                elevator.x = 885;
+                elevator.y = 360 - PIXEL_SIZE * 4;
+            } else {
+                elevator.x = canvas.width - PIXEL_SIZE * 3;
+                elevator.y = canvas.height - PIXEL_SIZE * 5;
+            }
+        }
+        
+        const leftExit = {
+            x: PIXEL_SIZE,
+            y: canvas.height - PIXEL_SIZE * 3,
+            width: PIXEL_SIZE * 2,
+            height: PIXEL_SIZE * 3,
+            color: '#00ffcc'
+        };
+        
+        function drawPixelRect(x, y, width, height, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+            
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 1, y + 1, width - 2, height - 2);
+        }
+        
+        function drawPlayer(p) {
+            drawPixelRect(p.x, p.y, p.width, p.height, p.color);
+            
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(p.x + 4, p.y + 12, 8, 8);
+            ctx.fillRect(p.x + 20, p.y + 12, 8, 8);
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(p.x + 8, p.y + 16, 4, 4);
+            ctx.fillRect(p.x + 24, p.y + 16, 4, 4);
+            
+            if (p.finished) {
+                ctx.fillStyle = '#00ffcc';
+                ctx.font = '16px Courier New';
+                ctx.fillText('OK', p.x + 6, p.y - 4);
+            }
+        }
+        
+        function drawPortals() {
+            for (const portal of portals) {
+                ctx.fillStyle = portal.color;
+                ctx.fillRect(portal.x + 2, portal.y, portal.w - 4, portal.h);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(portal.x + 4, portal.y + 4, portal.w - 8, portal.h - 8);
+                const pulse = Math.sin(performance.now() / 200) * 8;
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.fillRect(portal.x + 10, portal.y + portal.h / 2 - 6 + pulse / 2, portal.w - 20, 12 + Math.abs(pulse));
+            }
+        }
+        
+        function drawElevator() {
+            drawPixelRect(elevator.x, elevator.y, elevator.width, elevator.height, elevator.color);
+            
+            ctx.fillStyle = '#b8860b';
+            ctx.fillRect(elevator.x + 8, elevator.y + 8, elevator.width - 16, elevator.height - 16);
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '20px Courier New';
+            ctx.fillText('EXIT', elevator.x + 12, elevator.y + elevator.height / 2 + 6);
+        }
+        
+        function drawLeftExit() {
+        }
+        
+        function drawHoles() {
+            if (currentLevel === 3 && chaseActive) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, canvas.height - PIXEL_SIZE, chaseFront - 0, PIXEL_SIZE * 20);
+                ctx.fillStyle = '#8b0000';
+                for (let x = 0; x < chaseFront; x += PIXEL_SIZE) {
+                    ctx.fillRect(x, canvas.height - PIXEL_SIZE, PIXEL_SIZE, 8);
+                }
+                ctx.strokeStyle = '#e94560';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(2, canvas.height - PIXEL_SIZE + 2, chaseFront - 4, PIXEL_SIZE * 20 - 4);
+            }
+            for (const hole of activeHoles) {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(hole.x, hole.y, hole.width, hole.height);
+                
+                ctx.fillStyle = '#8b0000';
+                for (let x = 0; x < hole.width; x += PIXEL_SIZE) {
+                    ctx.fillRect(hole.x + x, hole.y, PIXEL_SIZE, 8);
+                }
+                
+                ctx.strokeStyle = '#e94560';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(hole.x + 2, hole.y + 2, hole.width - 4, hole.height - 4);
+            }
+        }
+        
+        function spawnHoleInFrontOfPlayer(p) {
+            const frontTile = Math.floor((p.x + p.width + 10) / PIXEL_SIZE);
+            const holeWidth = PIXEL_SIZE * 3;
+            activeHoles.push({
+                x: frontTile * PIXEL_SIZE,
+                y: canvas.height - PIXEL_SIZE,
+                width: holeWidth,
+                height: PIXEL_SIZE * 20,
+                timer: HOLE_TIME
+            });
+            holeTriggered = true;
+        }
+        
+        function updateHoles() {
+            for (let i = activeHoles.length - 1; i >= 0; i--) {
+                activeHoles[i].timer--;
+                if (activeHoles[i].timer <= 0) {
+                    activeHoles.splice(i, 1);
+                }
+            }
+        }
+        
+        function spawnHole(x, width, timer) {
+            activeHoles.push({
+                x,
+                y: canvas.height - PIXEL_SIZE,
+                width,
+                height: PIXEL_SIZE * 20,
+                timer
+            });
+        }
+        
+        function updateLevel2Trap() {
+            if (currentLevel !== 2) return;
+            if (holeTriggered) return;
+            for (const p of activePlayers()) {
+                if (!p.finished && p.x >= 380) {
+                    spawnHoleInFrontOfPlayer(p);
+                    break;
+                }
+            }
+        }
+        
+        function isPlayerOverHole(x, y, w, h) {
+            for (const hole of activeHoles) {
+                if (x < hole.x + hole.width && x + w > hole.x &&
+                    y < hole.y + hole.height && y + h > hole.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function updateLevel3() {
+            if (currentLevel !== 3) return;
+            const runners = activePlayers().filter(p => !p.finished);
+            if (runners.length === 0) return;
+            let rearmost = runners[0];
+            for (const p of runners) {
+                if (p.x < rearmost.x) rearmost = p;
+            }
+            if (!chaseActive) {
+                if (rearmost.x > 130) {
+                    chaseActive = true;
+                    chaseFront = rearmost.x - PIXEL_SIZE;
+                }
+                return;
+            }
+            chaseFront += CHASE_SPEED;
+            for (const p of runners) {
+                if (p.x + p.width <= chaseFront) {
+                    handlePlayerDeath(p);
+                }
+            }
+            while (nextTrapHole > 0 && chaseFront >= nextTrapHole) {
+                nextTrapHole += PIXEL_SIZE * 8;
+                if (nextTrapHole < canvas.width - PIXEL_SIZE * 6) {
+                    spawnHole(nextTrapHole, PIXEL_SIZE * 3, 60);
+                }
+            }
+        }
+        
+        function updateMovingPlatforms() {
+            for (const mp of movingPlatforms) {
+                mp.x += mp.dir * mp.speed;
+                if (mp.x > mp.maxX) {
+                    mp.x = mp.maxX;
+                    mp.dir = -1;
+                }
+                if (mp.x < mp.minX) {
+                    mp.x = mp.minX;
+                    mp.dir = 1;
+                }
+            }
+        }
+        
+        function findVanishingGroup(x, y) {
+            for (const vp of vanishingPlatforms) {
+                if (x >= vp.x0 && x < vp.x0 + vp.w && Math.abs(vp.y - y) < 1) {
+                    return vp;
+                }
+            }
+            return null;
+        }
+        
+        function isVanishingPlatform(x, y) {
+            return findVanishingGroup(x, y) !== null;
+        }
+        
+        function getVanishingPlatform(x, y) {
+            return findVanishingGroup(x, y);
+        }
+        
+        function isVanished(x, y) {
+            const vp = findVanishingGroup(x, y);
+            if (!vp) return false;
+            return vp.touchedAt !== -1 && performance.now() - vp.touchedAt >= 300;
+        }
+        
+        function markVanishingTouched(x, y) {
+            const vp = findVanishingGroup(x, y);
+            if (vp && vp.touchedAt === -1) {
+                vp.touchedAt = performance.now();
+            }
+        }
+        
+        function updateVanishing() {
+            if (currentLevel !== 7) return;
+        }
+        
+        function updateGravityZone() {
+            for (const p of activePlayers()) {
+                p.gravityFlipped = false;
+                if (gravityZone) {
+                    const cx = p.x + p.width / 2;
+                    p.gravityFlipped = cx > gravityZone.x && cx < gravityZone.x + gravityZone.w;
+                }
+            }
+        }
+        
+        function handlePlayerDeath(p) {
+            if (mode === 'single') {
+                dead = true;
+            } else if (currentLevel === 3) {
+                resetPlayerTo(p);
+                chaseActive = false;
+                chaseFront = 0;
+                nextTrapHole = 200;
+                activeHoles = [];
+            } else {
+                resetPlayerTo(p);
+            }
+        }
+        
+        function stepPlayer(p, k) {
+            if (iceMode) {
+                if (k.a) {
+                    p.velX -= MOVE_SPEED * 0.06;
+                } else if (k.d) {
+                    p.velX += MOVE_SPEED * 0.06;
+                } else {
+                    p.velX *= 0.92;
+                }
+                if (p.velX > MOVE_SPEED) p.velX = MOVE_SPEED;
+                if (p.velX < -MOVE_SPEED) p.velX = -MOVE_SPEED;
+                if (Math.abs(p.velX) < 0.1) p.velX = 0;
+            } else if (k.a) {
+                p.velX = controlsInverted ? MOVE_SPEED : -MOVE_SPEED;
+            } else if (k.d) {
+                p.velX = controlsInverted ? -MOVE_SPEED : MOVE_SPEED;
+            } else {
+                p.velX = 0;
+            }
+            
+            if (k.w && p.onGround) {
+                p.velY = p.gravityFlipped ? -JUMP_FORCE : JUMP_FORCE;
+                p.onGround = false;
+            }
+            
+            p.velY += p.gravityFlipped ? -GRAVITY : GRAVITY;
+            
+            p.x += p.velX;
+            p.y += p.velY;
+            
+            p.onGround = false;
+            
+            for (const platform of platforms) {
+                if (isInHole(platform.x, platform.y, platform.width, platform.height)) continue;
+                if (isVanished(platform.x, platform.y)) continue;
+                
+                if (p.x < platform.x + platform.width &&
+                    p.x + p.width > platform.x &&
+                    p.y < platform.y + platform.height &&
+                    p.y + p.height > platform.y) {
+                    
+                    if (!p.gravityFlipped && p.velY > 0 && p.y + p.height - p.velY <= platform.y + 10) {
+                        p.y = platform.y - p.height;
+                        p.velY = 0;
+                        p.onGround = true;
+                        markVanishingTouched(platform.x, platform.y);
+                    }
+                    if (p.gravityFlipped && p.velY < 0 && p.y - p.velY >= platform.y + platform.height - 10) {
+                        p.y = platform.y + platform.height;
+                        p.velY = 0;
+                        p.onGround = true;
+                    }
+                }
+            }
+            
+            for (const mp of movingPlatforms) {
+                if (p.x < mp.x + mp.w &&
+                    p.x + p.width > mp.x &&
+                    p.y < mp.y + mp.h &&
+                    p.y + p.height > mp.y) {
+                    
+                    if (p.velY > 0 && p.y + p.height - p.velY <= mp.y + 10) {
+                        p.y = mp.y - p.height;
+                        p.velY = 0;
+                        p.onGround = true;
+                        p.x += mp.dir * mp.speed;
+                    }
+                }
+            }
+            
+            if (p.x < 0) p.x = 0;
+            if (p.x + p.width > canvas.width) p.x = canvas.width - p.width;
+            
+            if (p.gravityFlipped ? p.y < -PIXEL_SIZE * 2 : p.y > canvas.height + PIXEL_SIZE * 2) {
+                handlePlayerDeath(p);
+            }
+            
+            for (const portal of portals) {
+                if (p.x < portal.x + portal.w &&
+                    p.x + p.width > portal.x &&
+                    p.y < portal.y + portal.h &&
+                    p.y + p.height > portal.y) {
+                    p.x = portal.tx;
+                    p.y = portal.ty;
+                    p.velX = 0;
+                    p.velY = 0;
+                }
+            }
+        }
+        
+        function overlaps(p, r) {
+            return p.x < r.x + r.width &&
+                p.x + p.width > r.x &&
+                p.y < r.y + r.height &&
+                p.y + p.height > r.y;
+        }
+        
+        function handleExits() {
+            for (const p of activePlayers()) {
+                if (p.finished) continue;
+                const ex = (currentLevel === 4) ? leftExit : elevator;
+                if (overlaps(p, ex)) {
+                    onPlayerReachedExit(p);
+                }
+            }
+        }
+        
+        function onPlayerReachedExit(p) {
+            if (mode === 'single') {
+                advanceLevel();
+            } else {
+                p.finished = true;
+                if (!levelScored) {
+                    levelScored = true;
+                    if (p === player1) score1++;
+                    else score2++;
+                }
+                if (player1.finished && player2.finished) {
+                    advanceLevel();
+                }
+            }
+        }
+        
+        function advanceLevel() {
+            recordLevelTime();
+            if (currentLevel === 1) {
+                loadLevel(2);
+            } else if (currentLevel === 2) {
+                loadLevel(3);
+            } else if (currentLevel === 3) {
+                loadLevel(4);
+            } else if (currentLevel === 4) {
+                loadLevel(5);
+            } else if (currentLevel === 5) {
+                loadLevel(6);
+            } else if (currentLevel === 6) {
+                loadLevel(7);
+            } else if (currentLevel === 7) {
+                loadLevel(8);
+            } else if (currentLevel === 8) {
+                loadLevel(9);
+            } else if (currentLevel === 9) {
+                loadLevel(10);
+            } else if (currentLevel === 10) {
+                loadLevel(11);
+            } else if (currentLevel === 11) {
+                loadLevel(12);
+            } else if (currentLevel === 12) {
+                gameComplete = true;
+            }
+        }
+        
+        function update() {
+            if (mode === 'menu' || gameComplete || dead) return;
+            if (document.getElementById('passLock').style.display === 'flex' ||
+                document.getElementById('operatorPanel').style.display === 'flex') return;
+            
+            updateGravityZone();
+            
+            for (const p of activePlayers()) {
+                if (p.finished) {
+                    p.velX = 0;
+                    p.velY = 0;
+                    continue;
+                }
+                stepPlayer(p, inputFor(p));
+            }
+            
+            updateLevel2Trap();
+            updateLevel3();
+            updateMovingPlatforms();
+            updateHoles();
+            updateVanishing();
+            
+            handleExits();
+            
+            if (mode === 'online' && onlineStarted) {
+                sendMyInput();
+            }
+        }
+        
+        function recordLevelTime() {
+            if (levelRecorded) return;
+            levelRecorded = true;
+            levelTimes[currentLevel] = (performance.now() - levelStartTime) / 1000;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (mode === 'menu') return;
+            
+            if (gravityZone) {
+                ctx.fillStyle = 'rgba(170, 136, 255, 0.15)';
+                ctx.fillRect(gravityZone.x, gravityZone.y, gravityZone.w, gravityZone.h);
+                ctx.strokeStyle = 'rgba(200, 180, 255, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(gravityZone.x + 1, gravityZone.y + 1, gravityZone.w - 2, gravityZone.h - 2);
+                for (let i = 0; i < 3; i++) {
+                    const bx = gravityZone.x + 40 + i * 100;
+                    const phase = (performance.now() / 300 + i * 0.6) % 1;
+                    const by = gravityZone.y + 40 + phase * (gravityZone.h - 80);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                    ctx.beginPath();
+                    ctx.moveTo(bx - 10, by + 16);
+                    ctx.lineTo(bx + 10, by + 16);
+                    ctx.lineTo(bx, by - 6);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+            
+            for (const platform of platforms) {
+                if (isInHole(platform.x, platform.y, platform.width, platform.height)) continue;
+                if (isVanished(platform.x, platform.y)) continue;
+                drawPixelRect(platform.x, platform.y, platform.width, platform.height, platform.color);
+                if (isVanishingPlatform(platform.x, platform.y)) {
+                    const vp = getVanishingPlatform(platform.x, platform.y);
+                    const elapsed = performance.now() - vp.touchedAt;
+                    if (vp.touchedAt !== -1 && elapsed < 300) {
+                        ctx.fillStyle = 'rgba(255, 50, 50, ' + (0.3 + 0.6 * (elapsed / 300)) + ')';
+                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    }
+                }
+            }
+            
+            drawHoles();
+            drawElevator();
+            drawPortals();
+            for (const mp of movingPlatforms) {
+                ctx.fillStyle = '#00b3a0';
+                ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(mp.x + 1, mp.y + 1, mp.w - 2, mp.h - 2);
+            }
+            
+            if ((mode === 'dual' || mode === 'online') && !gameComplete) {
+                ctx.font = '22px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#e94560';
+                ctx.fillText('红 ' + score1, canvas.width / 2 - 120, 34);
+                ctx.fillStyle = '#ffcc00';
+                ctx.fillText('黄 ' + score2, canvas.width / 2 + 120, 34);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(':', canvas.width / 2, 34);
+                ctx.textAlign = 'left';
+            }
+            
+            const elapsed = (performance.now() - levelStartTime) / 1000;
+            document.getElementById('timeDisplay').textContent = '当前 ' + elapsed.toFixed(1) + 's';
+            let timesText = '';
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                if (levelTimes[i] !== undefined) {
+                    timesText += '第' + i + '关 ' + levelTimes[i].toFixed(1) + 's  ';
+                }
+            }
+            document.getElementById('levelTimeDisplay').textContent = timesText;
+            
+            if (gameComplete) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '44px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('全部通关!', canvas.width / 2, canvas.height / 2 - 80);
+                
+                if (mode === 'dual' || mode === 'online') {
+                    let winnerText;
+                    let winnerColor;
+                    if (score1 > score2) {
+                        winnerText = 'P1 (红) 获胜!';
+                        winnerColor = '#e94560';
+                    } else if (score2 > score1) {
+                        winnerText = 'P2 (黄) 获胜!';
+                        winnerColor = '#ffcc00';
+                    } else {
+                        winnerText = '平局!';
+                        winnerColor = '#ffffff';
+                    }
+                    ctx.fillStyle = winnerColor;
+                    ctx.font = '34px Courier New';
+                    ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 - 20);
+                }
+                
+                const total = Object.values(levelTimes).reduce((a, b) => a + b, 0);
+                ctx.font = '22px Courier New';
+                ctx.fillStyle = '#fff';
+                const perCol = Math.ceil(TOTAL_LEVELS / 2);
+                for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                    const t = levelTimes[i];
+                    if (t !== undefined) {
+                        const col = Math.floor((i - 1) / perCol);
+                        const row = (i - 1) % perCol;
+                        const lx = canvas.width / 2 + (col === 0 ? -110 : 110);
+                        const ly = canvas.height / 2 + 10 + row * 28;
+                        ctx.fillText('第' + i + '关: ' + t.toFixed(1) + 's', lx, ly);
+                    }
+                }
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '28px Courier New';
+                ctx.textAlign = 'right';
+                ctx.fillText('通关总用时: ' + total.toFixed(1) + 's', canvas.width - 20, 40);
+                ctx.font = '18px Courier New';
+                ctx.textAlign = 'left';
+                ctx.fillText('按 R 重新开始', 20, canvas.height - 15);
+                ctx.textAlign = 'left';
+            } else if (dead) {
+                document.getElementById('deathScreen').style.display = 'flex';
+            } else {
+                document.getElementById('deathScreen').style.display = 'none';
+                for (const p of activePlayers()) drawPlayer(p);
+            }
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function setKey(code, isDown) {
+            switch (code) {
+                case 'KeyW': keys1.w = isDown; break;
+                case 'KeyA': keys1.a = isDown; break;
+                case 'KeyS': keys1.s = isDown; break;
+                case 'KeyD': keys1.d = isDown; break;
+                case 'ArrowUp': keys2.w = isDown; break;
+                case 'ArrowLeft': keys2.a = isDown; break;
+                case 'ArrowDown': keys2.s = isDown; break;
+                case 'ArrowRight': keys2.d = isDown; break;
+            }
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            const code = e.code || '';
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea') return;
+            setKey(code, true);
+            if (code === 'KeyR') {
+                if (mode === 'menu') return;
+                if (gameComplete) {
+                    gameComplete = false;
+                    for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                        delete levelTimes[i];
+                    }
+                    score1 = 0;
+                    score2 = 0;
+                    loadLevel(1);
+                } else {
+                    loadLevel(currentLevel);
+                }
+            }
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea') return;
+            setKey(e.code || '', false);
+        });
+        
+        document.getElementById('respawnBtn').addEventListener('click', () => {
+            loadLevel(currentLevel);
+        });
+        
+        const PASSCODE = '521026';
+        let passInput = '';
+        
+        function buildPasspad() {
+            const pad = document.getElementById('passpad');
+            pad.innerHTML = '';
+            for (let i = 1; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'pass-key';
+                btn.textContent = i;
+                btn.addEventListener('click', () => handlePassKey(String(i)));
+                pad.appendChild(btn);
+            }
+            const cbtn = document.createElement('button');
+            cbtn.className = 'pass-key';
+            cbtn.textContent = 'C';
+            cbtn.addEventListener('click', () => { passInput = ''; updatePassDisplay(); });
+            pad.appendChild(cbtn);
+            const zbtn = document.createElement('button');
+            zbtn.className = 'pass-key';
+            zbtn.textContent = '0';
+            zbtn.addEventListener('click', () => handlePassKey('0'));
+            pad.appendChild(zbtn);
+            const ebtn = document.createElement('button');
+            ebtn.className = 'pass-key';
+            ebtn.textContent = 'OK';
+            ebtn.addEventListener('click', () => tryPass());
+            pad.appendChild(ebtn);
+        }
+        
+        function updatePassDisplay() {
+            document.getElementById('passDisplay').textContent = passInput + '\u00A0'.repeat(Math.max(0, 6 - passInput.length));
+        }
+        
+        function handlePassKey(d) {
+            if (passInput.length < 6) {
+                passInput += d;
+                updatePassDisplay();
+            }
+        }
+        
+        function tryPass() {
+            if (passInput === PASSCODE) {
+                document.getElementById('passLock').style.display = 'none';
+                openOperatorPanel();
+            } else {
+                document.getElementById('passError').textContent = '密码错误';
+                passInput = '';
+                updatePassDisplay();
+                setTimeout(() => { document.getElementById('passError').textContent = ''; }, 1200);
+            }
+        }
+        
+        function openOperatorPanel() {
+            const grid = document.getElementById('opGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                const cell = document.createElement('button');
+                cell.className = 'op-cell';
+                cell.textContent = i;
+                cell.addEventListener('click', () => jumpToLevel(i));
+                grid.appendChild(cell);
+            }
+            document.getElementById('operatorPanel').style.display = 'flex';
+        }
+        
+        function jumpToLevel(n) {
+            for (let i = 1; i < n; i++) {
+                levelTimes[i] = 0;
+            }
+            delete levelTimes[n];
+            document.getElementById('operatorPanel').style.display = 'none';
+            loadLevel(n);
+        }
+        
+        document.getElementById('operatorBtn').addEventListener('click', () => {
+            passInput = '';
+            updatePassDisplay();
+            document.getElementById('passError').textContent = '';
+            document.getElementById('passLock').style.display = 'flex';
+        });
+        
+        document.getElementById('passClose').addEventListener('click', () => {
+            document.getElementById('passLock').style.display = 'none';
+        });
+        
+        document.getElementById('opClose').addEventListener('click', () => {
+            document.getElementById('operatorPanel').style.display = 'none';
+        });
+        
+        buildPasspad();
+        
+        function startGame(m) {
+            mode = m;
+            score1 = 0;
+            score2 = 0;
+            gameComplete = false;
+            dead = false;
+            document.getElementById('menuScreen').style.display = 'none';
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                delete levelTimes[i];
+            }
+            loadLevel(1);
+        }
+        
+        document.getElementById('singleBtn').addEventListener('click', () => startGame('single'));
+        document.getElementById('dualBtn').addEventListener('click', () => startGame('dual'));
+        
+        function connectOnline() {
+            const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+            const host = location.host || 'localhost:3000';
+            ws = new WebSocket(proto + host);
+            document.getElementById('onlineStatus').textContent = '正在连接服务器...';
+            ws.onopen = () => {
+                document.getElementById('onlineStatus').textContent = '已连接，请输入名字并加入';
+            };
+            ws.onmessage = (e) => {
+                let msg;
+                try { msg = JSON.parse(e.data); } catch (err) { return; }
+                if (msg.type === 'state') {
+                    if (onlineJoined) {
+                        const others = (msg.players || []).filter(p => p.id !== ws.myId);
+                        if (others.length > 0) {
+                            document.getElementById('onlineStatus').textContent = '对手: ' + others.map(p => p.name).join(', ');
+                        } else {
+                            document.getElementById('onlineStatus').textContent = '等待 P2 加入...';
+                        }
+                    }
+                } else if (msg.type === 'welcome') {
+                    ws.myId = msg.id;
+                } else if (msg.type === 'role') {
+                    onlineRole = msg.role;
+                } else if (msg.type === 'input') {
+                    if (msg.id !== ws.myId) {
+                        remoteKeys = msg.keys || { w: false, a: false, d: false, s: false };
+                    }
+                } else if (msg.type === 'countdown') {
+                    startCountdown();
+                }
+            };
+            ws.onclose = () => {
+                document.getElementById('onlineStatus').textContent = '连接已断开';
+            };
+        }
+        
+        function startCountdown() {
+            let n = 3;
+            const el = document.getElementById('countdown');
+            el.style.display = 'block';
+            el.textContent = n;
+            document.getElementById('onlineStatus').textContent = '比赛即将开始!';
+            const timer = setInterval(() => {
+                n--;
+                if (n <= 0) {
+                    clearInterval(timer);
+                    el.style.display = 'none';
+                    beginOnlineGame();
+                } else {
+                    el.textContent = n;
+                }
+            }, 1000);
+        }
+        
+        function beginOnlineGame() {
+            onlineStarted = true;
+            mode = 'online';
+            score1 = 0;
+            score2 = 0;
+            document.getElementById('onlineScreen').style.display = 'none';
+            loadLevel(1);
+        }
+        
+        document.getElementById('onlineBtn').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('onlineScreen').style.display = 'flex';
+            connectOnline();
+        });
+        
+        document.getElementById('nameJoinBtn').addEventListener('click', () => {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                document.getElementById('onlineStatus').textContent = '请输入名字';
+                return;
+            }
+            if (!ws || ws.readyState !== 1) {
+                document.getElementById('onlineStatus').textContent = '未连接服务器';
+                return;
+            }
+            onlineJoined = true;
+            ws.send(JSON.stringify({ type: 'join', name: name }));
+            document.getElementById('onlineStatus').textContent = '等待 P2 加入...';
+        });
+        
+        document.getElementById('onlineClose').addEventListener('click', () => {
+            if (ws) ws.close();
+            document.getElementById('onlineScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+            onlineJoined = false;
+            onlineStarted = false;
+            mode = 'menu';
+        });
+        
+        gameLoop();
+    </script>
+</body>
+</html>
