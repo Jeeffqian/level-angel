@@ -291,6 +291,137 @@
             text-shadow: 4px 4px 0px #000;
             margin: 10px 0;
         }
+        
+        .menu-btn-sm {
+            width: 200px;
+            padding: 10px 0;
+            font-size: 18px;
+        }
+        
+        .skin-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin: 8px 0;
+            width: 420px;
+        }
+        
+        .skin-label {
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        
+        .skin-cell {
+            width: 46px;
+            height: 46px;
+            border-radius: 6px;
+            border: 3px solid #000;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 2px 2px 0px #000;
+        }
+        
+        .skin-cell.locked {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .skin-cell.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+        }
+        
+        .skin-cell .lock {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .achievement-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 420px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .ach-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111122;
+            border: 2px solid #333355;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        
+        .ach-row.done {
+            border-color: #ffd700;
+        }
+        
+        .ach-name {
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .ach-desc {
+            color: #8899aa;
+            font-size: 13px;
+        }
+        
+        .ach-badge {
+            color: #ffd700;
+            font-size: 22px;
+        }
+        
+        #touchControls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        .tc-btn {
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            color: #fff;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        
+        .tc-btn:active {
+            background: rgba(255, 255, 255, 0.35);
+        }
+        
+        #tcP1Left { left: 16px; bottom: 90px; }
+        #tcP1Right { left: 96px; bottom: 90px; }
+        .tc-jump#tcP1Jump { right: 24px; bottom: 90px; background: rgba(233, 69, 96, 0.3); }
+        #tcP2Left { left: 16px; bottom: 170px; }
+        #tcP2Right { left: 96px; bottom: 170px; }
+        .tc-jump#tcP2Jump { right: 24px; bottom: 170px; background: rgba(255, 204, 0, 0.3); }
+        .tc-p2 { border-color: rgba(255, 204, 0, 0.7); color: #ffcc00; }
     </style>
 </head>
 <body>
@@ -321,11 +452,32 @@
         <div class="controls">
             P1: W跳 A左 D右 | P2: ↑跳 ←左 →右
         </div>
+        <div id="touchControls" style="display:none;">
+            <div class="tc-btn" id="tcP1Left">◀</div>
+            <div class="tc-btn" id="tcP1Right">▶</div>
+            <div class="tc-btn tc-jump" id="tcP1Jump">▲</div>
+            <div class="tc-btn tc-p2" id="tcP2Left">◀</div>
+            <div class="tc-btn tc-p2" id="tcP2Right">▶</div>
+            <div class="tc-btn tc-jump tc-p2" id="tcP2Jump">▲</div>
+        </div>
         <div class="overlay" id="menuScreen" style="display: flex;">
             <div class="menu-title">Level Angel</div>
             <button class="menu-btn" id="singleBtn">单人模式</button>
             <button class="menu-btn" id="dualBtn">双人模式</button>
             <button class="menu-btn" id="onlineBtn">Online 模式</button>
+            <button class="menu-btn menu-btn-sm" id="skinBtn">角色皮肤</button>
+            <button class="menu-btn menu-btn-sm" id="achievementBtn">成就</button>
+        </div>
+        <div class="overlay" id="skinScreen">
+            <h2>角色皮肤</h2>
+            <div class="skin-row" id="skinP1Row"></div>
+            <div class="skin-row" id="skinP2Row"></div>
+            <button class="overlay-close" id="skinClose">返回</button>
+        </div>
+        <div class="overlay" id="achievementScreen">
+            <h2>成就</h2>
+            <div class="achievement-list" id="achievementList"></div>
+            <button class="overlay-close" id="achievementClose">返回</button>
         </div>
         <div class="overlay" id="onlineScreen">
             <h2>ONLINE 联机</h2>
@@ -351,6 +503,39 @@
         const HOLE_TIME = 180;
         const CHASE_SPEED = 7;
         
+        // ===== 音效（Web Audio 实时合成）=====
+        const SND = (() => {
+            let ac = null;
+            function ctx() {
+                if (!ac) {
+                    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+                }
+                if (ac && ac.state === 'suspended') ac.resume();
+                return ac;
+            }
+            function tone(freq, dur, type, vol) {
+                const c = ctx();
+                if (!c) return;
+                const o = c.createOscillator();
+                const g = c.createGain();
+                o.type = type || 'square';
+                o.frequency.value = freq;
+                o.connect(g); g.connect(c.destination);
+                const t = c.currentTime;
+                g.gain.setValueAtTime(vol || 0.08, t);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+                o.start(t); o.stop(t + dur + 0.02);
+            }
+            return {
+                unlockAc: () => ctx(),
+                jump() { tone(420, 0.1, 'square', 0.07); },
+                death() { tone(140, 0.32, 'sawtooth', 0.12); },
+                win() { [523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, 0.16, 'square', 0.1), i * 120)); },
+                unlock() { [660, 880].forEach((f, i) => setTimeout(() => tone(f, 0.12, 'square', 0.09), i * 100)); },
+                select() { tone(300, 0.06, 'square', 0.06); }
+            };
+        })();
+        
         const keys1 = { w: false, a: false, d: false, s: false };
         const keys2 = { w: false, a: false, d: false, s: false };
         
@@ -375,7 +560,88 @@
         let levelRecorded = false;
         let levelScored = false;
         const levelTimes = {};
-        const TOTAL_LEVELS = 12;
+        const TOTAL_LEVELS = 20;
+        
+        // ===== 存档、皮肤、成就、计时赛 =====
+        const SAVE_KEY = 'levelAngelSave';
+        const SKINS = [
+            { id: 'red', name: '经典红', color: '#e94560', unlock: 0 },
+            { id: 'yellow', name: '经典黄', color: '#ffcc00', unlock: 0 },
+            { id: 'blue', name: '海洋蓝', color: '#3b82f6', unlock: 3 },
+            { id: 'green', name: '翡翠绿', color: '#22c55e', unlock: 6 },
+            { id: 'purple', name: '紫罗兰', color: '#a855f7', unlock: 9 },
+            { id: 'gold', name: '黄金', color: '#f59e0b', unlock: 12 },
+            { id: 'cyan', name: '极光青', color: '#06b6d4', unlock: 15 },
+            { id: 'pink', name: '樱花粉', color: '#ec4899', unlock: 18 }
+        ];
+        const ACHIEVEMENTS = [
+            { id: 'first', name: '初次启程', desc: '通过第 1 关' },
+            { id: 'halfway', name: '渐入佳境', desc: '通过第 10 关' },
+            { id: 'master', name: '通关大师', desc: '通关全部 20 关' },
+            { id: 'speed5', name: '闪电侠', desc: '任意一关 5 秒内通关' },
+            { id: 'speed3', name: '极速传说', desc: '任意一关 3 秒内通关' }
+        ];
+        let saveData = { bestTimes: {}, skin1: 'red', skin2: 'yellow', unlocked: {}, achievements: {} };
+        function loadSave() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (raw) {
+                    const d = JSON.parse(raw);
+                    saveData = Object.assign({ bestTimes: {}, skin1: 'red', skin2: 'yellow', unlocked: {}, achievements: {} }, d);
+                }
+            } catch (e) {}
+        }
+        function saveSave() {
+            try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveData)); } catch (e) {}
+        }
+        function maxUnlocked() {
+            let m = 0;
+            for (const k in saveData.bestTimes) {
+                const n = parseInt(k, 10);
+                if (n > m) m = n;
+            }
+            return m;
+        }
+        function isSkinUnlocked(s) {
+            if (s.unlock <= 0) return true;
+            return maxUnlocked() >= s.unlock;
+        }
+        function checkAchievements() {
+            const unlocked = maxUnlocked();
+            const anyBest = (fn) => {
+                for (const k in saveData.bestTimes) {
+                    if (fn(saveData.bestTimes[k])) return true;
+                }
+                return false;
+            };
+            const checks = {
+                first: unlocked >= 1,
+                halfway: unlocked >= 10,
+                master: unlocked >= 20,
+                speed5: anyBest(t => t <= 5),
+                speed3: anyBest(t => t <= 3)
+            };
+            let changed = false;
+            for (const a of ACHIEVEMENTS) {
+                if (checks[a.id] && !saveData.achievements[a.id]) {
+                    saveData.achievements[a.id] = Date.now();
+                    changed = true;
+                    SND.unlock();
+                }
+            }
+            if (changed) saveSave();
+        }
+        function applySkins() {
+            const s1 = SKINS.find(s => s.id === saveData.skin1) || SKINS[0];
+            const s2 = SKINS.find(s => s.id === saveData.skin2) || SKINS[1];
+            player1.color = s1.color;
+            player2.color = s2.color;
+        }
+        function skinColor(id) {
+            const s = SKINS.find(s => s.id === id);
+            return s ? s.color : SKINS[0].color;
+        }
+        
         let onlineRole = null;
         let remoteKeys = { w: false, a: false, d: false, s: false };
         let onlinePeer = null;
@@ -386,6 +652,10 @@
         let roomCode = '';
         
         const platforms = [];
+        const spikes = [];
+        const springs = [];
+        const conveyors = [];
+        const fallingPlatforms = [];
         
         function resetPlayerTo(p) {
             p.x = 100;
@@ -487,6 +757,10 @@
             controlsInverted = false;
             iceMode = false;
             platforms.length = 0;
+            spikes.length = 0;
+            springs.length = 0;
+            conveyors.length = 0;
+            fallingPlatforms.length = 0;
             
             for (let x = 0; x < canvas.width; x += PIXEL_SIZE) {
                 platforms.push({
@@ -748,6 +1022,119 @@
                 }
             }
             
+            // ===== 新增关卡 13~20（引入新机关）=====
+            const addPlats = (arr, color) => {
+                for (const pl of arr) {
+                    const x0 = Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE;
+                    for (let x = x0; x < x0 + pl.w; x += PIXEL_SIZE) {
+                        platforms.push({
+                            x, y: pl.y, width: PIXEL_SIZE, height: pl.h, color: color || '#0f3460'
+                        });
+                    }
+                }
+            };
+
+            if (n === 13) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 520, y: 430, w: 130, h: 20 },
+                    { x: 820, y: 350, w: 100, h: 20 }
+                ]);
+                spikes.push({ x: 260, y: 590, w: PIXEL_SIZE, h: 18, minX: 200, maxX: 420, dir: 1, speed: 2.2 });
+                spikes.push({ x: 580, y: 590, w: PIXEL_SIZE, h: 18, minX: 520, maxX: 760, dir: 1, speed: 2.8 });
+            }
+            
+            if (n === 14) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 380, w: 130, h: 20 },
+                    { x: 820, y: 280, w: 100, h: 20 }
+                ]);
+                springs.push({ x: 340, y: 590, w: PIXEL_SIZE, h: 18, force: -24 });
+                springs.push({ x: 640, y: 570, w: PIXEL_SIZE, h: 18, force: -26 });
+            }
+            
+            if (n === 15) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 420, w: 130, h: 20 }
+                ]);
+                conveyors.push({ x: 200, y: 590, w: PIXEL_SIZE * 5, h: 18, dir: 1 });
+                conveyors.push({ x: 520, y: 590, w: PIXEL_SIZE * 5, h: 18, dir: -1 });
+                conveyors.push({ x: 640, y: 400, w: PIXEL_SIZE * 3, h: 20, dir: 1 });
+            }
+            
+            if (n === 16) {
+                const fp = [
+                    { x: 300, y: 520, w: 96 },
+                    { x: 430, y: 470, w: 96 },
+                    { x: 560, y: 420, w: 96 },
+                    { x: 690, y: 370, w: 96 },
+                    { x: 820, y: 320, w: 96 }
+                ];
+                for (const pl of fp) {
+                    addPlats([{ x: pl.x, y: pl.y, w: pl.w, h: 20 }], '#7a5cff');
+                    fallingPlatforms.push({ x0: Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE, w: pl.w, y: pl.y, h: 20, touchedAt: -1, fallen: false });
+                }
+            }
+            
+            if (n === 17) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 420, w: 130, h: 20 },
+                    { x: 820, y: 320, w: 100, h: 20 }
+                ]);
+                spikes.push({ x: 250, y: 590, w: PIXEL_SIZE, h: 18, minX: 200, maxX: 400, dir: 1, speed: 2.4 });
+                springs.push({ x: 600, y: 570, w: PIXEL_SIZE, h: 18, force: -26 });
+            }
+            
+            if (n === 18) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 400, w: 130, h: 20 }
+                ]);
+                conveyors.push({ x: 200, y: 590, w: PIXEL_SIZE * 6, h: 18, dir: 1 });
+                const fp = [
+                    { x: 560, y: 380, w: 96 },
+                    { x: 700, y: 330, w: 96 },
+                    { x: 840, y: 280, w: 96 }
+                ];
+                for (const pl of fp) {
+                    addPlats([{ x: pl.x, y: pl.y, w: pl.w, h: 20 }], '#7a5cff');
+                    fallingPlatforms.push({ x0: Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE, w: pl.w, y: pl.y, h: 20, touchedAt: -1, fallen: false });
+                }
+            }
+            
+            if (n === 19) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 430, w: 130, h: 20 },
+                    { x: 820, y: 340, w: 100, h: 20 }
+                ]);
+                spikes.push({ x: 240, y: 590, w: PIXEL_SIZE, h: 18, minX: 160, maxX: 420, dir: 1, speed: 3.0 });
+                spikes.push({ x: 620, y: 590, w: PIXEL_SIZE, h: 18, minX: 520, maxX: 780, dir: 1, speed: 3.2 });
+                conveyors.push({ x: 420, y: 590, w: PIXEL_SIZE * 3, h: 18, dir: -1 });
+            }
+            
+            if (n === 20) {
+                addPlats([
+                    { x: 150, y: 520, w: 130, h: 20 },
+                    { x: 480, y: 440, w: 130, h: 20 },
+                    { x: 820, y: 360, w: 100, h: 20 }
+                ]);
+                spikes.push({ x: 260, y: 590, w: PIXEL_SIZE, h: 18, minX: 180, maxX: 440, dir: 1, speed: 2.6 });
+                springs.push({ x: 500, y: 570, w: PIXEL_SIZE, h: 18, force: -25 });
+                conveyors.push({ x: 560, y: 590, w: PIXEL_SIZE * 4, h: 18, dir: 1 });
+                const fp = [
+                    { x: 660, y: 430, w: 96 },
+                    { x: 800, y: 380, w: 96 }
+                ];
+                for (const pl of fp) {
+                    addPlats([{ x: pl.x, y: pl.y, w: pl.w, h: 20 }], '#7a5cff');
+                    fallingPlatforms.push({ x0: Math.floor(pl.x / PIXEL_SIZE) * PIXEL_SIZE, w: pl.w, y: pl.y, h: 20, touchedAt: -1, fallen: false });
+                }
+            }
+            
             document.getElementById('levelLabel').textContent = 'LEVEL ' + n;
             document.getElementById('deathScreen').style.display = 'none';
             levelStartTime = performance.now();
@@ -974,6 +1361,76 @@
             }
         }
         
+        function updateSpikes() {
+            for (const sp of spikes) {
+                if (sp.minX !== undefined && sp.maxX !== undefined) {
+                    sp.x += sp.dir * sp.speed;
+                    if (sp.x > sp.maxX) { sp.x = sp.maxX; sp.dir = -1; }
+                    if (sp.x < sp.minX) { sp.x = sp.minX; sp.dir = 1; }
+                }
+            }
+        }
+        
+        function updateFalling() {
+            for (const fp of fallingPlatforms) {
+                if (fp.fallen) continue;
+                if (fp.touchedAt !== -1 && performance.now() - fp.touchedAt >= 260) {
+                    fp.fallen = true;
+                }
+            }
+        }
+        
+        function spikeAt(x, y, w, h) {
+            for (const sp of spikes) {
+                if (x < sp.x + sp.w && x + w > sp.x &&
+                    y < sp.y + sp.h && y + h > sp.y) {
+                    return sp;
+                }
+            }
+            return null;
+        }
+        
+        function springAt(x, y, w, h) {
+            for (const sp of springs) {
+                if (x < sp.x + sp.w && x + w > sp.x &&
+                    y < sp.y + sp.h && y + h > sp.y) {
+                    return sp;
+                }
+            }
+            return null;
+        }
+        
+        function conveyorAt(x, y, w, h) {
+            for (const cv of conveyors) {
+                if (x < cv.x + cv.w && x + w > cv.x &&
+                    y < cv.y + cv.h && y + h > cv.y) {
+                    return cv;
+                }
+            }
+            return null;
+        }
+        
+        function isFallingPlatform(x, y) {
+            for (const fp of fallingPlatforms) {
+                if (x >= fp.x0 && x < fp.x0 + fp.w && Math.abs(fp.y - y) < 1) {
+                    return fp;
+                }
+            }
+            return null;
+        }
+        
+        function isFallen(x, y) {
+            const fp = isFallingPlatform(x, y);
+            return !!fp && fp.fallen;
+        }
+        
+        function markFallingTouched(x, y) {
+            const fp = isFallingPlatform(x, y);
+            if (fp && fp.touchedAt === -1) {
+                fp.touchedAt = performance.now();
+            }
+        }
+        
         function findVanishingGroup(x, y) {
             for (const vp of vanishingPlatforms) {
                 if (x >= vp.x0 && x < vp.x0 + vp.w && Math.abs(vp.y - y) < 1) {
@@ -1019,6 +1476,7 @@
         }
         
         function handlePlayerDeath(p) {
+            SND.death();
             if (mode === 'single') {
                 dead = true;
             } else if (currentLevel === 3) {
@@ -1055,6 +1513,7 @@
             if (k.w && p.onGround) {
                 p.velY = p.gravityFlipped ? -JUMP_FORCE : JUMP_FORCE;
                 p.onGround = false;
+                SND.jump();
             }
             
             p.velY += p.gravityFlipped ? -GRAVITY : GRAVITY;
@@ -1067,6 +1526,7 @@
             for (const platform of platforms) {
                 if (isInHole(platform.x, platform.y, platform.width, platform.height)) continue;
                 if (isVanished(platform.x, platform.y)) continue;
+                if (isFallen(platform.x, platform.y)) continue;
                 
                 if (p.x < platform.x + platform.width &&
                     p.x + p.width > platform.x &&
@@ -1078,6 +1538,7 @@
                         p.velY = 0;
                         p.onGround = true;
                         markVanishingTouched(platform.x, platform.y);
+                        markFallingTouched(platform.x, platform.y);
                     }
                     if (p.gravityFlipped && p.velY < 0 && p.y - p.velY >= platform.y + platform.height - 10) {
                         p.y = platform.y + platform.height;
@@ -1100,6 +1561,25 @@
                         p.x += mp.dir * mp.speed;
                     }
                 }
+            }
+            
+            // 尖刺：触碰即死亡
+            if (spikeAt(p.x, p.y, p.width, p.height)) {
+                handlePlayerDeath(p);
+                return;
+            }
+            
+            // 传送带：站在上面被推动
+            const cv = conveyorAt(p.x, p.y, p.width, p.height);
+            if (cv && p.onGround) {
+                p.x += cv.dir * 3.5;
+            }
+            
+            // 弹簧：踩到即弹跳
+            const spg = springAt(p.x, p.y, p.width, p.height);
+            if (spg && !p.gravityFlipped && p.velY >= 0) {
+                p.velY = spg.force;
+                p.onGround = false;
             }
             
             if (p.x < 0) p.x = 0;
@@ -1157,29 +1637,10 @@
         
         function advanceLevel() {
             recordLevelTime();
-            if (currentLevel === 1) {
-                loadLevel(2);
-            } else if (currentLevel === 2) {
-                loadLevel(3);
-            } else if (currentLevel === 3) {
-                loadLevel(4);
-            } else if (currentLevel === 4) {
-                loadLevel(5);
-            } else if (currentLevel === 5) {
-                loadLevel(6);
-            } else if (currentLevel === 6) {
-                loadLevel(7);
-            } else if (currentLevel === 7) {
-                loadLevel(8);
-            } else if (currentLevel === 8) {
-                loadLevel(9);
-            } else if (currentLevel === 9) {
-                loadLevel(10);
-            } else if (currentLevel === 10) {
-                loadLevel(11);
-            } else if (currentLevel === 11) {
-                loadLevel(12);
-            } else if (currentLevel === 12) {
+            if (currentLevel < TOTAL_LEVELS) {
+                SND.win();
+                loadLevel(currentLevel + 1);
+            } else {
                 gameComplete = true;
             }
         }
@@ -1203,6 +1664,8 @@
             updateLevel2Trap();
             updateLevel3();
             updateMovingPlatforms();
+            updateSpikes();
+            updateFalling();
             updateHoles();
             updateVanishing();
             
@@ -1216,7 +1679,15 @@
         function recordLevelTime() {
             if (levelRecorded) return;
             levelRecorded = true;
-            levelTimes[currentLevel] = (performance.now() - levelStartTime) / 1000;
+            const t = (performance.now() - levelStartTime) / 1000;
+            levelTimes[currentLevel] = t;
+            if (mode === 'single') {
+                if (saveData.bestTimes[currentLevel] === undefined || t < saveData.bestTimes[currentLevel]) {
+                    saveData.bestTimes[currentLevel] = t;
+                    saveSave();
+                }
+                checkAchievements();
+            }
         }
         
         function draw() {
@@ -1248,12 +1719,21 @@
             for (const platform of platforms) {
                 if (isInHole(platform.x, platform.y, platform.width, platform.height)) continue;
                 if (isVanished(platform.x, platform.y)) continue;
+                if (isFallen(platform.x, platform.y)) continue;
                 drawPixelRect(platform.x, platform.y, platform.width, platform.height, platform.color);
                 if (isVanishingPlatform(platform.x, platform.y)) {
                     const vp = getVanishingPlatform(platform.x, platform.y);
                     const elapsed = performance.now() - vp.touchedAt;
                     if (vp.touchedAt !== -1 && elapsed < 300) {
                         ctx.fillStyle = 'rgba(255, 50, 50, ' + (0.3 + 0.6 * (elapsed / 300)) + ')';
+                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    }
+                }
+                if (isFallingPlatform(platform.x, platform.y)) {
+                    const fp = isFallingPlatform(platform.x, platform.y);
+                    if (fp.touchedAt !== -1 && !fp.fallen) {
+                        const elapsed = performance.now() - fp.touchedAt;
+                        ctx.fillStyle = 'rgba(255, 180, 40, ' + (0.3 + 0.6 * (elapsed / 260)) + ')';
                         ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
                     }
                 }
@@ -1268,6 +1748,58 @@
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(mp.x + 1, mp.y + 1, mp.w - 2, mp.h - 2);
+            }
+            
+            // 绘制尖刺
+            for (const sp of spikes) {
+                ctx.fillStyle = '#ff3355';
+                for (let sx = 0; sx < sp.w; sx += 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(sp.x + sx, sp.y + sp.h);
+                    ctx.lineTo(sp.x + sx + 4, sp.y);
+                    ctx.lineTo(sp.x + sx + 8, sp.y + sp.h);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(sp.x, sp.y, sp.w, sp.h);
+            }
+            
+            // 绘制弹簧
+            for (const sp of springs) {
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(sp.x, sp.y + 6, sp.w, sp.h - 6);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(sp.x, sp.y + 6, sp.w, sp.h - 6);
+                ctx.beginPath();
+                ctx.moveTo(sp.x, sp.y + sp.h);
+                ctx.lineTo(sp.x + 6, sp.y + 4);
+                ctx.lineTo(sp.x + 14, sp.y + sp.h);
+                ctx.lineTo(sp.x + 22, sp.y + 4);
+                ctx.lineTo(sp.x + sp.w, sp.y + sp.h);
+                ctx.stroke();
+            }
+            
+            // 绘制传送带
+            for (const cv of conveyors) {
+                ctx.fillStyle = '#334466';
+                ctx.fillRect(cv.x, cv.y, cv.w, cv.h);
+                ctx.strokeStyle = '#00b3a0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(cv.x + 1, cv.y + 1, cv.w - 2, cv.h - 2);
+                const arrow = (performance.now() / 200) % 1;
+                ctx.fillStyle = '#00ffcc';
+                for (let ax = 0; ax < cv.w; ax += 24) {
+                    const off = ((ax / 24 + arrow) % 3) * 8;
+                    const y = cv.y + cv.h / 2;
+                    if (cv.dir > 0) {
+                        ctx.fillRect(cv.x + ax + off, y - 1, 6, 2);
+                    } else {
+                        ctx.fillRect(cv.x + ax + (24 - off), y - 1, 6, 2);
+                    }
+                }
             }
             
             if ((mode === 'dual' || mode === 'online') && !gameComplete) {
@@ -1336,6 +1868,14 @@
                 ctx.font = '28px Courier New';
                 ctx.textAlign = 'right';
                 ctx.fillText('通关总用时: ' + total.toFixed(1) + 's', canvas.width - 20, 40);
+                if (mode === 'single') {
+                    const bestTotal = Object.keys(saveData.bestTimes).reduce((a, k) => a + saveData.bestTimes[k], 0);
+                    if (bestTotal > 0) {
+                        ctx.fillStyle = '#00ffcc';
+                        ctx.font = '20px Courier New';
+                        ctx.fillText('历史最快总用时: ' + bestTotal.toFixed(1) + 's', canvas.width - 20, 70);
+                    }
+                }
                 ctx.font = '18px Courier New';
                 ctx.textAlign = 'left';
                 ctx.fillText('按 R 重新开始', 20, canvas.height - 15);
@@ -1497,6 +2037,8 @@
             score2 = 0;
             gameComplete = false;
             dead = false;
+            applySkins();
+            updateTouchVisibility();
             document.getElementById('menuScreen').style.display = 'none';
             for (let i = 1; i <= TOTAL_LEVELS; i++) {
                 delete levelTimes[i];
@@ -1672,6 +2214,115 @@
             onlineStarted = false;
             mode = 'menu';
         });
+        
+        // ===== 皮肤选择 =====
+        function renderSkinSelect() {
+            const r1 = document.getElementById('skinP1Row');
+            const r2 = document.getElementById('skinP2Row');
+            r1.innerHTML = '<span class="skin-label">P1（红）的皮肤</span>';
+            r2.innerHTML = '<span class="skin-label">P2（黄）的皮肤</span>';
+            SKINS.forEach(s => {
+                const unlocked = isSkinUnlocked(s);
+                const mk = (row, playerKey) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'skin-cell' + (unlocked ? '' : ' locked') + (saveData[playerKey] === s.id ? ' selected' : '');
+                    cell.style.background = s.color;
+                    cell.title = s.name + (unlocked ? '' : '（通过第 ' + s.unlock + ' 关解锁）');
+                    if (!unlocked) {
+                        const lock = document.createElement('span');
+                        lock.className = 'lock';
+                        lock.textContent = '🔒';
+                        cell.appendChild(lock);
+                    }
+                    if (unlocked) {
+                        cell.addEventListener('click', () => {
+                            saveData[playerKey] = s.id;
+                            saveSave();
+                            applySkins();
+                            SND.select();
+                            renderSkinSelect();
+                        });
+                    }
+                    row.appendChild(cell);
+                };
+                mk(r1, 'skin1');
+                mk(r2, 'skin2');
+            });
+        }
+        
+        // ===== 成就 =====
+        function renderAchievements() {
+            const list = document.getElementById('achievementList');
+            list.innerHTML = '';
+            const count = ACHIEVEMENTS.filter(a => saveData.achievements[a.id]).length;
+            const head = document.createElement('div');
+            head.className = 'ach-row';
+            head.innerHTML = '<span class="ach-name" style="color:#ffd700">已解锁 ' + count + ' / ' + ACHIEVEMENTS.length + '</span>';
+            list.appendChild(head);
+            for (const a of ACHIEVEMENTS) {
+                const done = !!saveData.achievements[a.id];
+                const row = document.createElement('div');
+                row.className = 'ach-row' + (done ? ' done' : '');
+                row.innerHTML = '<span><div class="ach-name">' + a.name + '</div><div class="ach-desc">' + a.desc + '</div></span>' +
+                    '<span class="ach-badge">' + (done ? '★' : '☆') + '</span>';
+                list.appendChild(row);
+            }
+        }
+        
+        document.getElementById('skinBtn').addEventListener('click', () => {
+            renderSkinSelect();
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('skinScreen').style.display = 'flex';
+        });
+        document.getElementById('skinClose').addEventListener('click', () => {
+            document.getElementById('skinScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        document.getElementById('achievementBtn').addEventListener('click', () => {
+            renderAchievements();
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('achievementScreen').style.display = 'flex';
+        });
+        document.getElementById('achievementClose').addEventListener('click', () => {
+            document.getElementById('achievementScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex';
+        });
+        
+        // ===== 移动端触控 =====
+        function isTouch() {
+            return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        }
+        function bindTouch(id, setter) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const on = (e) => { e.preventDefault(); SND.unlockAc(); setter(true); };
+            const off = (e) => { e.preventDefault(); setter(false); };
+            el.addEventListener('touchstart', on, { passive: false });
+            el.addEventListener('touchend', off, { passive: false });
+            el.addEventListener('touchcancel', off, { passive: false });
+        }
+        function updateTouchVisibility() {
+            const tc = document.getElementById('touchControls');
+            if (!isTouch()) { tc.style.display = 'none'; return; }
+            tc.style.display = 'block';
+            const dual = (mode === 'dual' || mode === 'online');
+            ['tcP2Left', 'tcP2Right', 'tcP2Jump'].forEach(id => {
+                document.getElementById(id).style.display = dual ? 'flex' : 'none';
+            });
+        }
+        if (isTouch()) {
+            bindTouch('tcP1Left', v => keys1.a = v);
+            bindTouch('tcP1Right', v => keys1.d = v);
+            bindTouch('tcP1Jump', v => keys1.w = v);
+            bindTouch('tcP2Left', v => keys2.a = v);
+            bindTouch('tcP2Right', v => keys2.d = v);
+            bindTouch('tcP2Jump', v => keys2.w = v);
+        }
+        updateTouchVisibility();
+        
+        // ===== 初始化存档与皮肤 =====
+        loadSave();
+        applySkins();
         
         gameLoop();
     </script>
