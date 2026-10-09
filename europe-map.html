@@ -323,7 +323,7 @@
         <input id="onName" class="txtin" maxlength="12" placeholder="输入昵称" autocomplete="off">
       </div>
       <div class="setrow hidden" id="onCodeRow"><span class="setlabel">房间码</span>
-        <input id="onCode" class="txtin" maxlength="40" placeholder="房主给你的房间码" autocomplete="off">
+        <input id="onCode" class="txtin" maxlength="5" placeholder="5位数字房间码" autocomplete="off">
       </div>
       <p class="ainote" id="onHint"></p>
       <div class="choices">
@@ -2507,29 +2507,38 @@ function netCreateRoom(myName, size) {
   document.getElementById('onSetup').classList.add('hidden');
   document.getElementById('onLobby').classList.remove('hidden');
   document.getElementById('onStatus').textContent = '正在生成房间码…';
-  const peer = new Peer();
-  NET.peer = peer;
-  peer.on('open', id => {
-    NET.key = id;
-    if (NET.closing || !NET.peer) return;
-    netRenderRoom();
-    document.getElementById('onStatus').textContent = '房间码：' + id + '· 把房间码发给朋友加入';
-  });
-  peer.on('connection', conn => {
-    if (NET.closing || NET.started) { try { conn.close(); } catch (e) {} return; }
-    conn.on('open', () => {
-      conn.on('data', data => {
-        let m = null;
-        try { m = JSON.parse(data); } catch (e) { return; }
-        netHostOnMsg(conn, m);
-      });
-      conn.on('close', () => netHostGone(conn));
+  const tryCreate = () => {
+    const peer = new Peer(String(Math.floor(10000 + Math.random() * 90000)));
+    NET.peer = peer;
+    peer.on('open', id => {
+      NET.key = id;
+      if (NET.closing || !NET.peer) return;
+      netRenderRoom();
+      document.getElementById('onStatus').textContent = '房间码：' + id + ' · 把房间码发给朋友加入';
     });
-  });
-  peer.on('error', err => {
-    if (NET.closing || !NET.peer) return;
-    netSetupError('创建房间失败：' + (err && err.type ? err.type : '网络异常'));
-  });
+    peer.on('connection', conn => {
+      if (NET.closing || NET.started) { try { conn.close(); } catch (e) {} return; }
+      conn.on('open', () => {
+        conn.on('data', data => {
+          let m = null;
+          try { m = JSON.parse(data); } catch (e) { return; }
+          netHostOnMsg(conn, m);
+        });
+        conn.on('close', () => netHostGone(conn));
+      });
+    });
+    peer.on('error', err => {
+      if (NET.closing || !NET.peer) return;
+      if (err && err.type === 'unavailable-id') {
+        try { peer.destroy(); } catch (e) {}
+        NET.peer = null;
+        tryCreate();
+      } else {
+        netSetupError('创建房间失败：' + (err && err.type ? err.type : '网络异常'));
+      }
+    });
+  };
+  tryCreate();
 }
 function netHostOnMsg(conn, m) {
   if (!m || !m.t || !NET.room) return;
@@ -2576,7 +2585,7 @@ function netCoreJoin() {
   const codeInp = document.getElementById('onCode');
   const nm = (inp.value || '').trim().slice(0, 12) || ('玩家' + Math.floor(Math.random() * 900 + 100));
   const code = (codeInp.value || '').trim();
-  if (!code) { netHint('请填写房主给你的房间码', '#ff8a8a'); return; }
+  if (!/^\d{5}$/.test(code)) { netHint('请填写5位数字房间码', '#ff8a8a'); return; }
   inp.value = nm; NET.myName = nm;
   const seg = document.querySelector('#onSizeSeg button.on');
   NET.size = parseInt(seg ? seg.getAttribute('data-s') : '2', 10) || 2;
