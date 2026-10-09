@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Craft - 记忆速建</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0d1117; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+canvas { display: block; }
+
+#hud {
+  position: fixed; top: 16px; left: 16px; z-index: 10; pointer-events: none;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#hud .chip {
+  background: rgba(0,0,0,0.55); color: #fff; padding: 8px 14px; border-radius: 10px;
+  font-size: 14px; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+#hud .phase { font-size: 18px; font-weight: bold; color: #ffd166; }
+#hud .phase.show { color: #4fc3f7; }
+#hud .phase.build { color: #7ce88c; }
+#hud .timer { font-size: 30px; font-weight: bold; color: #0ff; font-variant-numeric: tabular-nums; }
+#hud .timer.low { color: #ff6b6b; }
+
+#palette {
+  position: fixed; left: 16px; bottom: 16px; z-index: 10;
+  display: flex; gap: 8px; padding: 10px; background: rgba(0,0,0,0.55);
+  border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
+}
+#palette .sw {
+  width: 40px; height: 40px; border-radius: 8px; cursor: pointer; border: 3px solid transparent;
+  transition: transform 0.12s, border-color 0.12s; position: relative;
+}
+#palette .sw:hover { transform: scale(1.12); }
+#palette .sw.active { border-color: #fff; transform: scale(1.12); box-shadow: 0 0 14px rgba(255,255,255,0.6); }
+#palette .sw .k {
+  position: absolute; bottom: -7px; right: -5px; font-size: 10px; color: #fff;
+  background: rgba(0,0,0,0.8); padding: 1px 4px; border-radius: 4px; font-weight: bold;
+}
+
+#hint {
+  position: fixed; right: 16px; bottom: 16px; z-index: 10; pointer-events: none;
+  color: #9aa4b2; font-size: 12px; line-height: 1.9; text-align: right;
+  background: rgba(0,0,0,0.45); padding: 10px 14px; border-radius: 10px;
+}
+#hint b { color: #dfe6ef; }
+
+#crosshair {
+  position: fixed; top: 50%; left: 50%; width: 22px; height: 22px;
+  transform: translate(-50%, -50%); pointer-events: none; z-index: 15; display: none;
+}
+#crosshair::before, #crosshair::after {
+  content: ''; position: absolute; background: #fff; opacity: 0.9;
+  box-shadow: 0 0 2px rgba(0,0,0,0.9);
+}
+#crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
+#crosshair::after { top: 50%; left: 0; height: 2px; width: 100%; transform: translateY(-50%); }
+
+#lock-hint {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: 110px;
+  color: #fff; background: rgba(0,0,0,0.7); padding: 10px 18px; border-radius: 10px;
+  z-index: 15; pointer-events: none; font-size: 14px; letter-spacing: 1px; display: none;
+}
+
+.overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5,8,14,0.88); color: #fff;
+}
+.overlay .box { text-align: center; max-width: 560px; padding: 30px; }
+.overlay h1 { font-size: 58px; letter-spacing: 3px; margin-bottom: 6px; color: #ffd166; text-shadow: 0 0 30px rgba(255,209,102,0.4); }
+.overlay h1 span { color: #4fc3f7; }
+.overlay .sub { color: #9aa4b2; font-size: 16px; margin-bottom: 28px; line-height: 1.7; }
+.overlay .controls { color: #8a93a5; font-size: 13px; line-height: 2.1; margin-bottom: 26px; }
+.overlay .controls b { color: #dfe6ef; }
+
+.btn {
+  padding: 14px 44px; font-size: 18px; font-weight: bold; border: none; border-radius: 12px;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 2px; text-transform: uppercase;
+  background: #4fc3f7; color: #06121f; margin: 6px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(79,195,247,0.5); }
+.btn.gold { background: #ffd166; color: #1c1200; }
+.btn.gold:hover { box-shadow: 0 6px 22px rgba(255,209,102,0.5); }
+.btn.ghost { background: transparent; color: #9aa4b2; border: 1px solid #3a4352; }
+.btn.ghost:hover { background: rgba(255,255,255,0.06); box-shadow: none; }
+
+#result .stat-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; }
+#result .stat {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 14px 20px; min-width: 110px;
+}
+#result .stat .n { font-size: 34px; font-weight: bold; }
+#result .stat .l { font-size: 12px; color: #9aa4b2; margin-top: 4px; letter-spacing: 1px; }
+#result .accuracy { font-size: 52px; font-weight: bold; color: #7ce88c; margin: 6px 0; text-shadow: 0 0 24px rgba(124,232,140,0.4); }
+.stars { font-size: 40px; letter-spacing: 6px; margin: 8px 0; }
+.stars .off { color: #2a3140; }
+
+#submit-btn {
+  position: fixed; bottom: 22px; right: 16px; z-index: 10; display: none;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="chip phase" id="phase-chip">准备中</div>
+  <div class="chip">关卡 <b id="level-val">1</b></div>
+  <div class="chip timer" id="timer-val">--</div>
+</div>
+
+<div id="palette"></div>
+
+<div id="hint">
+  <b>WASD</b> 移动 · <b>空格</b> 跳跃 · <b>鼠标</b> 转向<br>
+  <b>左键</b> 放置 · <b>右键</b> 删除 · <b>1-6</b> 选色<br>
+  <b>Esc</b> 解锁鼠标
+</div>
+
+<div id="crosshair"></div>
+<div id="lock-hint">点击画面锁定鼠标 · Esc 解锁</div>
+
+<button id="submit-btn" class="btn gold">提交答案</button>
+
+<div id="menu" class="overlay">
+  <div class="box">
+    <h1>MEMORY <span>CRAFT</span></h1>
+    <div class="sub">第一人称走进场地，看一眼目标结构，然后凭记忆把它搭出来。</div>
+    <div class="controls">
+      1. 观察阶段：走近展示台，<b>记住</b>方块的位置与颜色<br>
+      2. 建造阶段：结构<b>消失</b>，回到场地用方块复现它<br>
+      3. 比对正确方块数计算匹配度，越准越高分
+    </div>
+    <button class="btn gold" onclick="startRun()">开始游戏</button>
+    <button class="btn ghost" onclick="startRun(true)">无限练习</button>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="box">
+    <h1 style="font-size:40px">搭建完成</h1>
+    <div class="stars" id="stars"></div>
+    <div class="accuracy" id="accuracy"></div>
+    <div class="stat-grid" id="stat-grid"></div>
+    <div>
+      <button class="btn gold" onclick="nextLevel()">下一关</button>
+      <button class="btn ghost" onclick="retryLevel()">重试本关</button>
+      <button class="btn ghost" onclick="toMenu()">返回菜单</button>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+'use strict';
+
+// ---------- 配置 ----------
+const SX = 6, SY = 6, SZ = 6;           // 场地尺寸（x, 高度, z）
+const PALETTE = [
+  { hex: 0x4caf50 }, // 1 草绿
+  { hex: 0x8b5a2b }, // 2 木棕
+  { hex: 0x9e9e9e }, // 3 石灰
+  { hex: 0xe6c87a }, // 4 沙黄
+  { hex: 0xc0392b }, // 5 砖红
+  { hex: 0x4fc3f7 }, // 6 水蓝
+];
+const BASE_BLOCK_COUNT = 6;
+const MAX_BLOCK_COUNT = 24;
+
+// 物理
+const WALK = 5;
+const GRAV = -24;
+const JUMP = 8.5;
+const EYE = 1.62;
+const P_HEIGHT = 1.8;
+const P_HALF = 0.3;
+const SENS = 0.0022;
+
+// ---------- 状态 ----------
+let scene, camera, renderer, clock;
+let buildGroup, targetGroup, highlight, ghostGroup;
+let blocks = new Map();       // key -> group（玩家场地方块）
+let playerMap, targetMap;
+let selectedColor = 1;
+let state = 'menu';           // menu | show | build | result
+let level = 1;
+let currentBlockCount = BASE_BLOCK_COUNT;
+let infiniteMode = false;
+let phaseTimer = 0;
+let buildTimeTotal = 0;
+
+// 玩家
+const pos = new THREE.Vector3(0, 0, 2);
+let vy = 0, onGround = true;
+let yaw = -Math.PI / 2, pitch = 0;   // 初始面向 +X（展示台方向）
+let locked = false;
+const keys = {};
+let hitResult = null;         // 每帧准星命中的结果缓存
+
+const raycaster = new THREE.Raycaster();
+const CENTER = new THREE.Vector2(0, 0);
+
+// ---------- 工具 ----------
+function key(x, y, z) { return x + ',' + y + ',' + z; }
+function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function inBounds(x, y, z) { return x >= 0 && x < SX && y >= 0 && y < SY && z >= 0 && z < SZ; }
+function cellToWorld(x, y, z) {
+  return new THREE.Vector3(x - SX / 2 + 0.5, y + 0.5, z - SZ / 2 + 0.5);
+}
+function emptyMap() {
+  return Array.from({ length: SX }, () =>
+    Array.from({ length: SY }, () => Array(SZ).fill(0)));
+}
+
+// ---------- 渲染资源 ----------
+let boxGeo, edgesGeo, edgeMat;
+function initRenderAssets() {
+  boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  edgesGeo = new THREE.EdgesGeometry(boxGeo);
+  edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 });
+}
+function makeVoxel(colorIdx) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: PALETTE[colorIdx - 1].hex });
+  const mesh = new THREE.Mesh(boxGeo, mat);
+  mesh.scale.setScalar(0.98);
+  const edges = new THREE.LineSegments(edgesGeo, edgeMat);
+  g.add(mesh); g.add(edges);
+  return g;
+}
+
+// ---------- 场景搭建 ----------
+function initScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1117);
+  scene.fog = new THREE.Fog(0x0d1117, 20, 48);
+
+  camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.rotation.order = 'YXZ';
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+
+  const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+  scene.add(ambient);
+  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x3a2a1a, 0.45);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(10, 16, 8);
+  scene.add(dir);
+
+  const grid = new THREE.GridHelper(60, 60, 0x2a3342, 0x1a2230);
+  grid.position.y = -0.01;
+  scene.add(grid);
+
+  // 玩家场地底盘
+  const floorGeo = new THREE.BoxGeometry(SX, 0.5, SZ);
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0x3a4352 });
+  const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+  floorMesh.position.y = -0.25;
+  scene.add(floorMesh);
+
+  const border = new THREE.LineSegments(
+    new THREE.EdgesGeometry(floorGeo),
+    new THREE.LineBasicMaterial({ color: 0x5a6b85 })
+  );
+  border.position.copy(floorMesh.position);
+  scene.add(border);
+
+  buildGroup = new THREE.Group();
+  targetGroup = new THREE.Group();
+  targetGroup.position.set(SX / 2 + 3.5, 0, 0);
+  scene.add(buildGroup);
+  scene.add(targetGroup);
+
+  // 展示底座
+  const pedGeo = new THREE.BoxGeometry(SX, 0.3, SZ);
+  const pedMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+  const ped = new THREE.Mesh(pedGeo, pedMat);
+  ped.position.set(0, -0.15, 0);
+  targetGroup.add(ped);
+
+  // 选中方块高亮（白框）
+  highlight = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+  highlight.scale.setScalar(1.001);
+  highlight.visible = false;
+  buildGroup.add(highlight);
+
+  // 放置预览 ghost（半透明）
+  ghostGroup = new THREE.Group();
+  const gMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.28, depthWrite: false });
+  const gMesh = new THREE.Mesh(boxGeo, gMat);
+  gMesh.scale.setScalar(0.98);
+  const gEdges = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 }));
+  ghostGroup.add(gMesh); ghostGroup.add(gEdges);
+  ghostGroup.visible = false;
+  buildGroup.add(ghostGroup);
+
+  updateCamera();
+}
+
+// ---------- 相机 ----------
+function updateCamera() {
+  camera.position.set(pos.x, pos.y + EYE, pos.z);
+  camera.rotation.set(pitch, yaw, 0);
+  camera.updateMatrixWorld(true);
+}
+
+// ---------- 物理 / 移动 ----------
+function collides() {
+  const px = pos.x, py = pos.y, pz = pos.z;
+  for (const g of blocks.values()) {
+    const { x, y, z } = g.userData;
+    const bx = x - SX / 2, by = y, bz = z - SZ / 2;
+    if (px + P_HALF > bx && px - P_HALF < bx + 1 &&
+        py + P_HEIGHT > by && py < by + 1 &&
+        pz + P_HALF > bz && pz - P_HALF < bz + 1) return true;
+  }
+  return false;
+}
+function moveAxis(dx, dy, dz) {
+  const step = 0.05;
+  let rx = dx;
+  while (Math.abs(rx) > 1e-5) {
+    const s = Math.sign(rx) * Math.min(Math.abs(rx), step);
+    pos.x += s;
+    if (collides()) { pos.x -= s; break; }
+    rx -= s;
+  }
+  let rz = dz;
+  while (Math.abs(rz) > 1e-5) {
+    const s = Math.sign(rz) * Math.min(Math.abs(rz), step);
+    pos.z += s;
+    if (collides()) { pos.z -= s; break; }
+    rz -= s;
+  }
+  let ry = dy;
+  while (Math.abs(ry) > 1e-5) {
+    const s = Math.sign(ry) * Math.min(Math.abs(ry), step);
+    pos.y += s;
+    if (collides()) {
+      pos.y -= s;
+      if (ry < 0) onGround = true;
+      else if (ry > 0) vy = 0;
+      break;
+    }
+    ry -= s;
+  }
+}
+function updatePlayer(dt) {
+  let f = 0, r = 0;
+  if (keys['w'] || keys['arrowup']) f += 1;
+  if (keys['s'] || keys['arrowdown']) f -= 1;
+  if (keys['a'] || keys['arrowleft']) r -= 1;
+  if (keys['d'] || keys['arrowright']) r += 1;
+
+  let mx = 0, mz = 0;
+  if (f !== 0 || r !== 0) {
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    let dx = fx * f + rx * r;
+    let dz = fz * f + rz * r;
+    const len = Math.hypot(dx, dz);
+    if (len > 0) { dx /= len; dz /= len; }
+    mx = dx * WALK; mz = dz * WALK;
+  }
+
+  if (keys[' '] && onGround) { vy = JUMP; onGround = false; }
+
+  vy += GRAV * dt;
+  if (vy < -40) vy = -40;
+
+  moveAxis(mx * dt, 0, mz * dt);
+  moveAxis(0, vy * dt, 0);
+
+  if (pos.y <= 0) { pos.y = 0; vy = 0; onGround = true; }
+
+  pos.x = Math.max(-16, Math.min(16, pos.x));
+  pos.z = Math.max(-16, Math.min(16, pos.z));
+}
+
+// ---------- 体素操作 ----------
+function placeVoxel(map, x, y, z, colorIdx) {
+  if (!inBounds(x, y, z)) return false;
+  const k = key(x, y, z);
+  if (map[x][y][z] !== 0) return false;
+  map[x][y][z] = colorIdx;
+  const g = makeVoxel(colorIdx);
+  g.position.copy(cellToWorld(x, y, z));
+  g.userData = { x, y, z };
+  g.children[0].userData = { x, y, z };
+  buildGroup.add(g);
+  blocks.set(k, g);
+  return true;
+}
+function removeVoxel(map, x, y, z) {
+  const k = key(x, y, z);
+  const g = blocks.get(k);
+  if (g) { buildGroup.remove(g); blocks.delete(k); }
+  if (map[x][y][z] !== 0) map[x][y][z] = 0;
+}
+function clearBuildGroup() {
+  for (const g of blocks.values()) buildGroup.remove(g);
+  blocks.clear();
+  playerMap = emptyMap();
+}
+
+// ---------- 目标生成 ----------
+function generateTarget(blockCount) {
+  const map = emptyMap();
+  const list = [];
+  const start = { x: randInt(0, SX - 1), y: 0, z: randInt(0, SZ - 1), color: randInt(1, PALETTE.length) };
+  map[start.x][start.y][start.z] = start.color;
+  list.push(start);
+
+  const dirs = [
+    [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]
+  ];
+  let guard = 0;
+  while (list.length < blockCount && guard < blockCount * 40) {
+    guard++;
+    const base = list[randInt(0, list.length - 1)];
+    const d = dirs[randInt(0, dirs.length - 1)];
+    const nx = base.x + d[0], ny = base.y + d[1], nz = base.z + d[2];
+    if (!inBounds(nx, ny, nz) || map[nx][ny][nz] !== 0) continue;
+    const color = Math.random() < 0.82 ? base.color : randInt(1, PALETTE.length);
+    map[nx][ny][nz] = color;
+    list.push({ x: nx, y: ny, z: nz, color });
+  }
+  return { map, count: list.length };
+}
+
+function renderTarget() {
+  while (targetGroup.children.length > 1) {
+    targetGroup.remove(targetGroup.children[1]);
+  }
+  for (let x = 0; x < SX; x++)
+    for (let y = 0; y < SY; y++)
+      for (let z = 0; z < SZ; z++) {
+        const c = targetMap[x][y][z];
+        if (c === 0) continue;
+        const g = makeVoxel(c);
+        g.position.copy(cellToWorld(x, y, z));
+        targetGroup.add(g);
+      }
+}
+
+// ---------- 交互：中心射线 ----------
+function centerRaycast() {
+  camera.updateMatrixWorld(true);
+  buildGroup.updateMatrixWorld(true);
+  raycaster.setFromCamera(CENTER, camera);
+
+  const targets = [];
+  for (const g of blocks.values()) targets.push(g.children[0]);
+  const hits = raycaster.intersectObjects(targets, false);
+  if (hits.length) {
+    const hit = hits[0];
+    const { x, y, z } = hit.object.userData;
+    return { type: 'block', x, y, z, nx: Math.round(hit.face.normal.x), ny: Math.round(hit.face.normal.y), nz: Math.round(hit.face.normal.z) };
+  }
+
+  // 与地面 y=0 求交
+  const origin = camera.position;
+  const dir = camera.getWorldDirection(new THREE.Vector3());
+  if (dir.y < -0.001) {
+    const t = -origin.y / dir.y;
+    if (t > 0 && t < 40) {
+      const px = origin.x + dir.x * t;
+      const pz = origin.z + dir.z * t;
+      const gx = Math.floor(px + SX / 2);
+      const gz = Math.floor(pz + SZ / 2);
+      if (inBounds(gx, 0, gz)) return { type: 'ground', x: gx, y: 0, z: gz };
+    }
+  }
+  return null;
+}
+function updateTargeting() {
+  hitResult = centerRaycast();
+  if (!hitResult) { highlight.visible = false; ghostGroup.visible = false; return; }
+
+  if (hitResult.type === 'block') {
+    highlight.visible = true;
+    highlight.position.copy(cellToWorld(hitResult.x, hitResult.y, hitResult.z));
+    const px = hitResult.x + hitResult.nx;
+    const py = hitResult.y + hitResult.ny;
+    const pz = hitResult.z + hitResult.nz;
+    if (inBounds(px, py, pz) && playerMap[px][py][pz] === 0) {
+      ghostGroup.visible = true;
+      ghostGroup.position.copy(cellToWorld(px, py, pz));
+      ghostGroup.children[0].material.color.set(PALETTE[selectedColor - 1].hex);
+    } else {
+      ghostGroup.visible = false;
+    }
+  } else if (hitResult.type === 'ground') {
+    highlight.visible = false;
+    ghostGroup.visible = true;
+    ghostGroup.position.copy(cellToWorld(hitResult.x, 0, hitResult.z));
+    ghostGroup.children[0].material.color.set(PALETTE[selectedColor - 1].hex);
+  }
+}
+
+// ---------- 输入事件 ----------
+function onMouseMove(e) {
+  if (!locked) return;
+  yaw -= e.movementX * SENS;
+  pitch -= e.movementY * SENS;
+  pitch = Math.max(-1.55, Math.min(1.55, pitch));
+}
+function onMouseDown(e) {
+  if (state !== 'build' || !locked) return;
+  const r = centerRaycast();
+  if (!r) return;
+  if (e.button === 0) {
+    if (r.type === 'block') {
+      placeVoxel(playerMap, r.x + r.nx, r.y + r.ny, r.z + r.nz, selectedColor);
+    } else if (r.type === 'ground') {
+      placeVoxel(playerMap, r.x, 0, r.z, selectedColor);
+    }
+  } else if (e.button === 2) {
+    if (r.type === 'block') removeVoxel(playerMap, r.x, r.y, r.z);
+  }
+}
+function onKeyDown(e) {
+  keys[e.key.toLowerCase()] = true;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= PALETTE.length) selectColor(n);
+}
+function onKeyUp(e) {
+  keys[e.key.toLowerCase()] = false;
+}
+function requestLock() {
+  if (state === 'show' || state === 'build') {
+    renderer.domElement.requestPointerLock();
+  }
+}
+function onPointerLockChange() {
+  locked = document.pointerLockElement === renderer.domElement;
+  document.getElementById('lock-hint').style.display =
+    (locked || state === 'menu' || state === 'result') ? 'none' : 'block';
+  document.getElementById('crosshair').style.display =
+    (state === 'show' || state === 'build') ? 'block' : 'none';
+}
+
+// ---------- 颜色面板 ----------
+function buildPalette() {
+  const el = document.getElementById('palette');
+  el.innerHTML = '';
+  PALETTE.forEach((c, i) => {
+    const b = document.createElement('div');
+    b.className = 'sw' + (i === 0 ? ' active' : '');
+    b.style.background = '#' + c.hex.toString(16).padStart(6, '0');
+    b.dataset.idx = i + 1;
+    b.innerHTML = '<span class="k">' + (i + 1) + '</span>';
+    b.addEventListener('click', () => selectColor(i + 1));
+    el.appendChild(b);
+  });
+}
+function selectColor(n) {
+  selectedColor = n;
+  const sws = document.querySelectorAll('#palette .sw');
+  sws.forEach(s => s.classList.toggle('active', parseInt(s.dataset.idx, 10) === n));
+}
+
+// ---------- UI 更新 ----------
+function setPhase(chip, timer) {
+  const pc = document.getElementById('phase-chip');
+  const tv = document.getElementById('timer-val');
+  pc.textContent = chip.text;
+  pc.className = 'chip phase ' + chip.cls;
+  tv.textContent = timer;
+  tv.classList.toggle('low', chip.cls === 'build' && phaseTimer <= 5);
+}
+
+// ---------- 流程 ----------
+function resetPlayer() {
+  pos.set(0, 0, 2);
+  vy = 0; onGround = true;
+  yaw = -Math.PI / 2; pitch = 0;
+}
+function startRun(infinite) {
+  infiniteMode = !!infinite;
+  level = 1;
+  currentBlockCount = BASE_BLOCK_COUNT;
+  document.getElementById('menu').classList.add('hidden');
+  document.getElementById('result').classList.add('hidden');
+  resetPlayer();
+  loadLevel();
+  requestLock();
+}
+function loadLevel() {
+  clearBuildGroup();
+  resetPlayer();
+  const t = generateTarget(currentBlockCount);
+  targetMap = t.map;
+  renderTarget();
+  targetGroup.visible = true;
+  document.getElementById('level-val').textContent = level;
+  document.getElementById('submit-btn').style.display = 'none';
+  enterShow();
+}
+function enterShow() {
+  state = 'show';
+  phaseTimer = Math.min(12, 4 + currentBlockCount * 0.45);
+  targetGroup.visible = true;
+  ghostGroup.visible = false;
+  highlight.visible = false;
+  onPointerLockChange();
+  setPhase({ text: '观察：记住结构', cls: 'show' }, Math.ceil(phaseTimer) + 's');
+}
+function enterBuild() {
+  state = 'build';
+  targetGroup.visible = false;
+  buildTimeTotal = Math.max(20, 25 + currentBlockCount * 1.5);
+  phaseTimer = buildTimeTotal;
+  document.getElementById('submit-btn').style.display = 'block';
+  setPhase({ text: '建造：凭记忆搭建', cls: 'build' }, Math.ceil(phaseTimer) + 's');
+}
+function submit() {
+  if (state !== 'build') return;
+  endRound();
+}
+function endRound() {
+  state = 'result';
+  ghostGroup.visible = false;
+  highlight.visible = false;
+  document.getElementById('submit-btn').style.display = 'none';
+  if (locked) document.exitPointerLock();
+  onPointerLockChange();
+
+  const t = targetMap, p = playerMap;
+  let correct = 0, wrongColor = 0, missing = 0, extra = 0;
+  for (let x = 0; x < SX; x++)
+    for (let y = 0; y < SY; y++)
+      for (let z = 0; z < SZ; z++) {
+        const tv = t[x][y][z], pv = p[x][y][z];
+        if (tv && pv) { if (tv === pv) correct++; else wrongColor++; }
+        else if (tv && !pv) missing++;
+        else if (!tv && pv) extra++;
+      }
+
+  const total = correct + wrongColor + missing;
+  const acc = total > 0 ? correct / total : 1;
+  const accPct = Math.round(acc * 100);
+  const used = buildTimeTotal - phaseTimer;
+
+  let stars = 0;
+  if (accPct === 100 && wrongColor === 0 && extra === 0) stars = 3;
+  else if (accPct >= 80) stars = 2;
+  else if (accPct >= 50) stars = 1;
+
+  document.getElementById('accuracy').textContent = accPct + '% 匹配';
+  document.getElementById('stars').innerHTML = starHtml(stars);
+  document.getElementById('stat-grid').innerHTML =
+    statHtml('正确', correct, '#7ce88c') +
+    statHtml('颜色错', wrongColor, '#ffd166') +
+    statHtml('漏放', missing, '#ff9f43') +
+    statHtml('多放', extra, '#ff6b6b') +
+    statHtml('用时', used.toFixed(1) + 's', '#4fc3f7');
+
+  document.getElementById('result').classList.remove('hidden');
+}
+function starHtml(n) {
+  let s = '';
+  for (let i = 1; i <= 3; i++) s += '<span class="' + (i <= n ? '' : 'off') + '">★</span>';
+  return s;
+}
+function statHtml(label, val, color) {
+  return '<div class="stat"><div class="n" style="color:' + color + '">' + val + '</div><div class="l">' + label + '</div></div>';
+}
+function nextLevel() {
+  if (!infiniteMode) level++;
+  currentBlockCount = Math.min(MAX_BLOCK_COUNT, currentBlockCount + 2);
+  document.getElementById('result').classList.add('hidden');
+  loadLevel();
+  requestLock();
+}
+function retryLevel() {
+  document.getElementById('result').classList.add('hidden');
+  loadLevel();
+  requestLock();
+}
+function toMenu() {
+  state = 'menu';
+  document.getElementById('result').classList.add('hidden');
+  document.getElementById('menu').classList.remove('hidden');
+  onPointerLockChange();
+  setPhase({ text: '准备中', cls: '' }, '--');
+}
+
+// ---------- 主循环 ----------
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+
+  if (state === 'show' || state === 'build') {
+    updatePlayer(dt);
+    updateCamera();
+  }
+  if (state === 'build') updateTargeting();
+
+  if (state === 'show') {
+    phaseTimer -= dt;
+    if (phaseTimer <= 0) { enterBuild(); }
+    else setPhase({ text: '观察：记住结构', cls: 'show' }, Math.ceil(phaseTimer) + 's');
+  } else if (state === 'build') {
+    phaseTimer -= dt;
+    if (phaseTimer <= 0) { endRound(); }
+    else setPhase({ text: '建造：凭记忆搭建', cls: 'build' }, Math.ceil(phaseTimer) + 's');
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ---------- 启动 ----------
+function init() {
+  initRenderAssets();
+  initScene();
+  buildPalette();
+  clock = new THREE.Clock();
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('resize', onResize);
+  window.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('pointerlockchange', onPointerLockChange);
+
+  renderer.domElement.addEventListener('click', requestLock);
+  document.getElementById('submit-btn').addEventListener('click', submit);
+
+  animate();
+}
+init();
+</script>
+</body>
+</html>
