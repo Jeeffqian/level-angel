@@ -2375,8 +2375,10 @@ function netApplySnap(s) {
   gameOver = !!s.over;
   armed = null; selFire = null; placing = null;
   hideFireUI();
-  document.getElementById('shopOv').classList.add('hidden');
-  document.getElementById('depOv').classList.add('hidden');
+  if (!netIsHost()) {
+    document.getElementById('shopOv').classList.add('hidden');
+    document.getElementById('depOv').classList.add('hidden');
+  }
   NET.started = true;
   if (s.pick >= 0) {            // 选主国阶段
     NET.phase = 'pick';
