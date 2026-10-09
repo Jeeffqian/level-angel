@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 2,
+  "karts": [
+    {
+      "id": "comet",
+      "name": "Comet",
+      "path": "./assets/karts/comet-3b6ca4185df4395c.glb",
+      "generationId": "4ff029d0-09a1-4604-85f9-1c8ce282a486",
+      "source": "Hyper3D Rodin Gen-2.5 High",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/4ff029d0-09a1-4604-85f9-1c8ce282a486",
+      "wheels": [
+        {
+          "name": "wheel_front_left",
+          "center": [
+            -1.2254942331854948,
+            0.39632738677250284,
+            0.6571694516836802
+          ],
+          "front": true,
+          "radius": 0.429608276928775
+        },
+        {
+          "name": "wheel_front_right",
+          "center": [
+            1.225181061036787,
+            0.39632738677250284,
+            0.6571694516836802
+          ],
+          "front": true,
+          "radius": 0.42921003623632714
+        },
+        {
+          "name": "wheel_rear_left",
+          "center": [
+            -1.0908209004534652,
+            0.4171922693084511,
+            -1.1144487563686503
+          ],
+          "front": false,
+          "radius": 0.4316956698894501
+        },
+        {
+          "name": "wheel_rear_right",
+          "center": [
+            1.0905077283047575,
+            0.4171922693084511,
+            -1.1144487563686503
+          ],
+          "front": false,
+          "radius": 0.4317918189553893
+        }
+      ],
+      "wheelRadius": 0.4305764505024854,
+      "driver": {
+        "position": [
+          -0.0001565860743538265,
+          0.74,
+          -0.4164235951660189
+        ],
+        "scale": 1.05
+      }
+    },
+    {
+      "id": "vesper",
+      "name": "Vesper",
+      "path": "./assets/karts/vesper-2bff016cc6dda371.glb",
+      "generationId": "db9bf287-09fd-48e9-ae78-67be9e8ce563",
+      "source": "Hyper3D Rodin Gen-2.5 High",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/db9bf287-09fd-48e9-ae78-67be9e8ce563",
+      "wheels": [
+        {
+          "name": "wheel_front_left",
+          "center": [
+            -1.0552294467375694,
+            0.40693774293453955,
+            0.7102510832700522
+          ],
+          "front": true,
+          "radius": 0.3883750430541113
+        },
+        {
+          "name": "wheel_front_right",
+          "center": [
+            1.0558078003807074,
+            0.40693774293453955,
+            0.7102510832700522
+          ],
+          "front": true,
+          "radius": 0.38839563727378845
+        },
+        {
+          "name": "wheel_rear_left",
+          "center": [
+            -0.9696468556381796,
+            0.43736710865876693,
+            -1.1459402259078197
+          ],
+          "front": false,
+          "radius": 0.4174958150833845
+        },
+        {
+          "name": "wheel_rear_right",
+          "center": [
+            0.9702252092813177,
+            0.43736710865876693,
+            -1.1459402259078197
+          ],
+          "front": false,
+          "radius": 0.4168297313153744
+        }
+      ],
+      "wheelRadius": 0.40277405668166466,
+      "driver": {
+        "position": [
+          0.00028917682156899614,
+          0.74,
+          -0.4251446253151831
+        ],
+        "scale": 1.05
+      }
+    },
+    {
+      "id": "circuit",
+      "name": "Circuit",
+      "path": "./assets/karts/circuit-ecff711c099829fc.glb",
+      "generationId": "53795f61-dbbd-450d-8f32-6952ced748c9",
+      "source": "Hyper3D Rodin Gen-2.5 High",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/53795f61-dbbd-450d-8f32-6952ced748c9",
+      "wheels": [
+        {
+          "name": "wheel_front_left",
+          "center": [
+            -1.184973724038288,
+            0.4248242902293661,
+            0.709619128589489
+          ],
+          "front": true,
+          "radius": 0.39877779921516776
+        },
+        {
+          "name": "wheel_front_right",
+          "center": [
+            1.1860162560953587,
+            0.4248242902293661,
+            0.709619128589489
+          ],
+          "front": true,
+          "radius": 0.39835204323753715
+        },
+        {
+          "name": "wheel_rear_left",
+          "center": [
+            -1.1111170074047318,
+            0.436186862019144,
+            -0.9190161612786708
+          ],
+          "front": false,
+          "radius": 0.42854396253824234
+        },
+        {
+          "name": "wheel_rear_right",
+          "center": [
+            1.1121595394618025,
+            0.436186862019144,
+            -0.9190161612786708
+          ],
+          "front": false,
+          "radius": 0.4303223788738251
+        }
+      ],
+      "wheelRadius": 0.4139990459661931,
+      "driver": {
+        "position": [
+          0.000521266028535308,
+          0.74,
+          -0.4152754785985191
+        ],
+        "scale": 1.05
+      }
+    },
+    {
+      "id": "bumble",
+      "name": "Bumble",
+      "path": "./assets/karts/bumble-e9d0fef43a697b4e.glb",
+      "generationId": "c3067dae-f8e2-4415-ae42-2a00b010d7cc",
+      "source": "Hyper3D Rodin Gen-2.5 High",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/c3067dae-f8e2-4415-ae42-2a00b010d7cc",
+      "wheels": [
+        {
+          "name": "wheel_front_left",
+          "center": [
+            -1.0924824847873367,
+            0.38285578679278237,
+            0.7668934418752505
+          ],
+          "front": true,
+          "radius": 0.3738936404697597
+        },
+        {
+          "name": "wheel_front_right",
+          "center": [
+            1.0930922226508166,
+            0.37716418599216217,
+            0.8389870520164396
+          ],
+          "front": true,
+          "radius": 0.35328733921051025
+        },
+        {
+          "name": "wheel_rear_left",
+          "center": [
+            -1.0203888746461478,
+            0.38475298705965577,
+            -1.1568676287343742
+          ],
+          "front": false,
+          "radius": 0.3642942886799574
+        },
+        {
+          "name": "wheel_rear_right",
+          "center": [
+            1.0209986125096278,
+            0.37716418599216217,
+            -0.9747364031145281
+          ],
+          "front": false,
+          "radius": 0.3793593615991995
+        }
+      ],
+      "wheelRadius": 0.3677086574898567,
+      "driver": {
+        "position": [
+          0.0003048689317399668,
+          0.74,
+          -0.43782872758935676
+        ],
+        "scale": 1.05
+      }
+    },
+    {
+      "id": "manta",
+      "name": "Manta",
+      "path": "./assets/karts/manta-6db8390219af49cd.glb",
+      "generationId": "deee755b-4e3a-482d-8907-d9f6345bad45",
+      "source": "Hyper3D Rodin Gen-2.5 High",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/deee755b-4e3a-482d-8907-d9f6345bad45",
+      "wheels": [
+        {
+          "name": "wheel_front_left",
+          "center": [
+            -1.1856142249900279,
+            0.44470169623763145,
+            0.7453264425149132
+          ],
+          "front": true,
+          "radius": 0.433123916387558
+        },
+        {
+          "name": "wheel_front_right",
+          "center": [
+            1.1834060108229254,
+            0.44470169623763145,
+            0.7453264425149132
+          ],
+          "front": true,
+          "radius": 0.43477872243965976
+        },
+        {
+          "name": "wheel_rear_left",
+          "center": [
+            -0.9164935262016763,
+            0.43712083148303,
+            -1.1347280166262466
+          ],
+          "front": false,
+          "radius": 0.42463005380705
+        },
+        {
+          "name": "wheel_rear_right",
+          "center": [
+            0.914285312034574,
+            0.43712083148303,
+            -1.1347280166262466
+          ],
+          "front": false,
+          "radius": 0.4252686477266252
+        }
+      ],
+      "wheelRadius": 0.42945033509022323,
+      "driver": {
+        "position": [
+          -0.001104107083551207,
+          0.74,
+          -0.4126506487504585
+        ],
+        "scale": 1.05
+      }
+    }
+  ],
+  "avatars": [
+    {
+      "id": "ace",
+      "name": "Ace",
+      "path": "./assets/avatars/ace-9f576ac7c3ea3751.glb",
+      "portrait": "./assets/avatars/ace-portrait-5adcf6479f6d73b4.png",
+      "generationId": "d501f461-b20b-4fb5-a8e7-c6746f46d210",
+      "source": "Hyper3D Rodin Gen-2.5 High, supplied image reference",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/d501f461-b20b-4fb5-a8e7-c6746f46d210",
+      "bounds": {
+        "min": [
+          -0.4722125232219696,
+          -0.6765000224113464,
+          -0.46727797389030457
+        ],
+        "max": [
+          0.47144615650177,
+          1.373500108718872,
+          1.2038899660110474
+        ],
+        "dimensions": [
+          0.9436586797237396,
+          2.0500001311302185,
+          1.671167939901352
+        ]
+      }
+    },
+    {
+      "id": "luna",
+      "name": "Luna",
+      "path": "./assets/avatars/luna-e8552b691b905a78.glb",
+      "portrait": "./assets/avatars/luna-portrait-e3f99bc94f0e4ef3.png",
+      "generationId": "04191fd3-6c35-4245-9b8f-a400a87736d1",
+      "source": "Hyper3D Rodin Gen-2.5 High, supplied image reference",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/04191fd3-6c35-4245-9b8f-a400a87736d1",
+      "bounds": {
+        "min": [
+          -0.6497847437858582,
+          -0.6765000820159912,
+          -0.6882342100143433
+        ],
+        "max": [
+          0.6497847437858582,
+          1.3734999895095825,
+          1.439988136291504
+        ],
+        "dimensions": [
+          1.2995694875717163,
+          2.0500000715255737,
+          2.128222346305847
+        ]
+      }
+    },
+    {
+      "id": "bolt",
+      "name": "Bolt",
+      "path": "./assets/avatars/bolt-8c0a51e2011d4ce0.glb",
+      "portrait": "./assets/avatars/bolt-portrait-297a12c45c3960e9.png",
+      "generationId": "8f551e3b-eaa2-479b-b92e-f167612030df",
+      "source": "Hyper3D Rodin Gen-2.5 High, supplied image reference",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/8f551e3b-eaa2-479b-b92e-f167612030df",
+      "bounds": {
+        "min": [
+          -0.7936992645263672,
+          -0.6765000224113464,
+          -0.5131118893623352
+        ],
+        "max": [
+          0.6481739282608032,
+          1.3734999895095825,
+          1.1655243635177612
+        ],
+        "dimensions": [
+          1.4418731927871704,
+          2.050000011920929,
+          1.6786362528800964
+        ]
+      }
+    },
+    {
+      "id": "bao",
+      "name": "Bao",
+      "path": "./assets/avatars/bao-2c1a2ac54eda6b81.glb",
+      "portrait": "./assets/avatars/bao-portrait-c19c4cae8227509d.png",
+      "generationId": "1ea03e66-4d04-4a19-b9fc-7cff63c7286a",
+      "source": "Hyper3D Rodin Gen-2.5 High, supplied image reference",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/1ea03e66-4d04-4a19-b9fc-7cff63c7286a",
+      "bounds": {
+        "min": [
+          -0.6468014717102051,
+          -0.6764999628067017,
+          -0.5304805040359497
+        ],
+        "max": [
+          0.6468014717102051,
+          1.3734999895095825,
+          1.3183772563934326
+        ],
+        "dimensions": [
+          1.2936029434204102,
+          2.049999952316284,
+          1.8488577604293823
+        ]
+      }
+    },
+    {
+      "id": "skye",
+      "name": "Skye",
+      "path": "./assets/avatars/skye-7127df174da07bb0.glb",
+      "portrait": "./assets/avatars/skye-portrait-cf90a31e97d467f4.png",
+      "generationId": "ce07b2dd-eebf-40e8-a290-156949ad2649",
+      "source": "Hyper3D Rodin Gen-2.5 High, supplied image reference",
+      "displayUrl": "https://hyper3d.ai/workspace/rodin/ce07b2dd-eebf-40e8-a290-156949ad2649",
+      "bounds": {
+        "min": [
+          -0.5024452805519104,
+          -0.6765000224113464,
+          -0.6070789694786072
+        ],
+        "max": [
+          0.5607679486274719,
+          1.373500108718872,
+          1.3941545486450195
+        ],
+        "dimensions": [
+          1.0632132291793823,
+          2.0500001311302185,
+          2.0012335181236267
+        ]
+      }
+    }
+  ]
+}
