@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星群沙盘 - 造物主经营肉鸽</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #07090f; --panel: #11151f; --panel2: #171c28; --line: #262e3d;
+  --text: #eef2f7; --muted: #97a1b0; --accent: #26d07c; --accent2: #ffd166; --danger: #ff6248;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -10%, rgba(38,208,124,.12), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(91,140,255,.12), transparent);
+  color: var(--text);
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+#app { display: flex; flex-direction: column; height: 100vh; max-width: 1180px; margin: 0 auto; padding: 10px 14px 14px; }
+header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 6px 2px 12px; }
+h1 { font-size: 22px; font-weight: 800; letter-spacing: 2px; }
+h1 small { display: block; font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 3px; margin-top: 2px; }
+.hdrbtns { display: flex; gap: 8px; }
+#main { display: flex; gap: 14px; flex: 1; min-height: 0; }
+#board { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; position: relative; }
+#board canvas { border: 1px solid var(--line); border-radius: 10px; background: #0b0e16; touch-action: manipulation; cursor: crosshair; max-width: 100%; max-height: 100%; }
+#toast { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 10; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+#warning { position: absolute; top: 10px; left: 10px; right: 10px; display: none; align-items: center; justify-content: center; gap: 10px; background: rgba(120,30,20,.9); border: 1px solid var(--danger); border-radius: 10px; padding: 8px 12px; z-index: 9; animation: pulse 1s infinite; }
+#warning .txt { font-size: 13px; font-weight: 700; color: #fff; }
+#warning button { flex: 0 0 auto; }
+@keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(255,98,72,.5);} 50%{ box-shadow: 0 0 0 8px rgba(255,98,72,0);} }
+#tutorial { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(8,12,20,.96); border: 1px solid var(--accent2); border-radius: 12px; padding: 10px 14px; z-index: 12; max-width: 92%; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+#tutorial .txt { font-size: 13px; margin-bottom: 6px; }
+@keyframes pulsering { 0%,100%{ box-shadow: 0 0 0 0 rgba(255,209,102,.85);} 50%{ box-shadow: 0 0 0 9px rgba(255,209,102,0);} }
+.pulse { animation: pulsering 1s infinite; border-color: var(--accent2) !important; }
+#side { width: 310px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.card h3 { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin-bottom: 10px; font-weight: 600; }
+.era { display: flex; align-items: center; gap: 10px; }
+.era .ic { font-size: 30px; }
+.era .nm { font-size: 17px; font-weight: 800; letter-spacing: 1px; }
+.era .goal { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.bar { height: 10px; background: #0c0f17; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+.bar > i { display: block; height: 100%; background: linear-gradient(90deg, #26d07c, #ffd166); transition: width .3s; border-radius: 999px; }
+.bar.stab > i { background: linear-gradient(90deg, #5b8cff, #26d07c); }
+.bar.stab > i.low { background: linear-gradient(90deg, #ff6248, #ffd166); }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.stat { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.stat .k { font-size: 11px; color: var(--muted); }
+.stat .v { font-size: 18px; font-weight: 700; margin-top: 2px; }
+.stat .v.danger { color: var(--danger); }
+.stat .v.gold { color: var(--accent2); }
+.palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); cursor: pointer; color: var(--muted); font-size: 11px; transition: all .12s; user-select: none; }
+.tool .ic { font-size: 20px; }
+.tool.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--text); background: #14202a; }
+.tool .cost { font-size: 10px; color: var(--accent2); }
+.tool.lock { opacity: .38; cursor: not-allowed; filter: grayscale(.5); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+button { flex: 1; min-width: 70px; background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 9px 8px; font-size: 13px; cursor: pointer; transition: all .12s; letter-spacing: 1px; }
+button:hover { border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #04140b; font-weight: 700; }
+button.warn { color: var(--accent2); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.primary:disabled { background: var(--panel2); border-color: var(--line); color: var(--muted); }
+.log { height: 90px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.log .t { color: #4d5563; margin-right: 4px; }
+.log .warn { color: var(--accent2); }
+.log .danger { color: var(--danger); }
+.log .good { color: var(--accent); }
+.legend { font-size: 12px; color: var(--muted); line-height: 1.9; }
+.legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid #000; }
+.overlay { position: fixed; inset: 0; background: rgba(4,6,12,.85); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.modal { width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-size: 24px; letter-spacing: 2px; margin-bottom: 6px; }
+.modal .lead { color: var(--muted); font-size: 14px; line-height: 1.8; margin-bottom: 18px; }
+.bigbtn { width: 100%; padding: 12px; font-size: 15px; margin-top: 8px; }
+.eventTitle { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.eventTitle .em { font-size: 34px; }
+.shop { display: flex; flex-direction: column; gap: 10px; }
+.shopitem { display: flex; align-items: center; gap: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.shopitem .info { flex: 1; }
+.shopitem .name { font-size: 14px; font-weight: 600; }
+.shopitem .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.shopitem button { flex: 0 0 auto; }
+.lv { font-size: 11px; color: var(--accent); }
+.dust { font-size: 14px; color: var(--accent2); font-weight: 700; text-align: center; margin-bottom: 12px; }
+.hidden { display: none !important; }
+footer { text-align: center; color: #4d5563; font-size: 12px; padding: 8px 0 0; }
+@media (max-width: 820px) { #main { flex-direction: column; } #side { width: auto; flex-direction: row; flex-wrap: wrap; } #side .card { flex: 1 1 46%; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>星群沙盘<small>STAR SANDBOX · 进化 · 抉择 · 肉鸽</small></h1>
+    <div class="hdrbtns">
+      <button id="btnSound" title="音效">🔊</button>
+      <button id="btnTutorial" title="新手教学">🎓</button>
+      <button id="btnHelp" title="帮助">❓</button>
+    </div>
+  </header>
+
+  <div id="main">
+    <div id="board">
+      <canvas id="cv"></canvas>
+      <div id="toast"></div>
+      <div id="warning"><span class="txt" id="warnText">⚠️ 天灾将至</span><button id="btnDeflect" class="warn">🛡 偏转 -25</button></div>
+      <div id="tutorial" style="display:none"><div class="txt" id="tutText"></div><button id="btnSkipTut">跳过教学</button></div>
+    </div>
+
+    <aside id="side">
+      <div class="card" style="border-color:#2a3a50">
+        <h3>🎯 当前任务</h3>
+        <div id="objective" style="font-size:13px;line-height:1.5"></div>
+      </div>
+
+      <div class="card">
+        <h3>时代 · 进化</h3>
+        <div class="era">
+          <div class="ic" id="eraIc">🌑</div>
+          <div><div class="nm" id="eraName">荒芜之海</div><div class="goal" id="eraGoal"></div></div>
+        </div>
+        <div class="bar"><i id="eraBar"></i></div>
+      </div>
+
+      <div class="card">
+        <h3>资源状态</h3>
+        <div class="stats">
+          <div class="stat"><div class="k">能量</div><div class="v" id="stEnergy">0</div></div>
+          <div class="stat"><div class="k">稳定度</div><div class="v" id="stStab">0</div></div>
+          <div class="stat"><div class="k">进化值</div><div class="v gold" id="stScore">0</div></div>
+          <div class="stat"><div class="k">村民</div><div class="v" id="stPop">0</div></div>
+          <div class="stat"><div class="k">房屋</div><div class="v" id="stHouse">0</div></div>
+          <div class="stat"><div class="k">圣殿</div><div class="v" id="stTemple">0</div></div>
+          <div class="stat"><div class="k">回合</div><div class="v" id="stTick">0</div></div>
+        </div>
+        <div class="bar stab" style="margin-top:10px"><i id="stabBar"></i></div>
+      </div>
+
+      <div class="card">
+        <h3>造物工具 · 点击地图放置</h3>
+        <div class="palette" id="palette"></div>
+      </div>
+
+      <div class="card">
+        <h3>操作</h3>
+        <div class="row" style="margin-bottom:8px">
+          <button id="btnToggle">⏸ 暂停</button>
+          <button id="btnSpeed">⏩ x2</button>
+        </div>
+        <div class="row">
+          <button id="btnSoothe" class="warn">🕊 安抚 -30</button>
+          <button id="btnRecruit">👨‍🌾 招募 -20</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnRestart">🔄 重开</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>事件记录</h3>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card">
+        <h3>图例</h3>
+        <div class="legend" id="legend"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>点击放置地块 · 生命产生能量 · 进化值推进时代 · 天灾可偏转 · 抉择决定命运</footer>
+</div>
+
+<div class="overlay hidden" id="helpOverlay">
+  <div class="modal">
+    <h2>怎么玩</h2>
+    <div class="lead" id="helpText"></div>
+    <button class="bigbtn primary" id="helpClose">知道了</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="startOverlay">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:52px">🌌</div>
+    <h2>星群沙盘</h2>
+    <div class="lead">你是一颗流浪星球的意识。培育生命、推进<b>进化时代</b>，在星球熄灭前<b>飞升成神</b>。</div>
+    <div class="lead" style="text-align:left">
+      🎯 <b>目标</b>：提高「进化值」，依次解锁森林/山地 → 房屋村民 → 飞升<br>
+      1️⃣ 选工具点击地图放置<b>海洋/平原</b>，生命会生长并产生能量<br>
+      2️⃣ 遇到<b>抉择事件</b>时做出选择，把握命运<br>
+      3️⃣ 天灾来临前有 3 回合预警，可花能量<b>偏转</b><br>
+      4️⃣ 稳定度归零则失败，进化值满则<b>飞升胜利</b>
+    </div>
+    <div class="dust" id="startDust"></div>
+    <button class="bigbtn primary" id="btnStart">开始创世</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="eventOverlay">
+  <div class="modal">
+    <div class="eventTitle"><span class="em" id="eventEm">🌠</span><h2 id="eventTitle"></h2></div>
+    <div class="lead" id="eventDesc"></div>
+    <div id="eventChoices"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="blessOverlay">
+  <div class="modal">
+    <h2 style="color:var(--accent2)">🌟 神性祝福</h2>
+    <div class="lead">星球进化，你获得一次祝福。选择一项：</div>
+    <div id="blessChoices"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overOverlay">
+  <div class="modal">
+    <h2 id="overTitle">星球熄灭</h2>
+    <div class="lead" id="overStats"></div>
+    <div class="dust" id="overDust"></div>
+    <h3 style="font-size:14px;margin:8px 0 12px;color:var(--muted)">✨ 神性天赋（星尘解锁，永久生效）</h3>
+    <div class="shop" id="shop"></div>
+    <div style="height:12px"></div>
+    <button class="bigbtn primary" id="btnAgain">再次创世</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const SIZE = 16;
+const TERRAIN = {
+  void:     { name:'虚空',   color:'#0a0d16', cost:0,  cap:0, emoji:''   },
+  water:    { name:'海洋',   color:'#2d6b9e', cost:8,  cap:1, emoji:'🌊' },
+  plain:    { name:'平原',   color:'#7fa86b', cost:8,  cap:2, emoji:'🌿' },
+  forest:   { name:'森林',   color:'#3c7a3f', cost:16, cap:3, emoji:'🌲' },
+  mountain: { name:'山地',   color:'#9a8b7a', cost:12, cap:2, emoji:'⛰️' },
+};
+const LIFE_EMOJI = {
+  water: ['🐟'], plain: ['🌱','🦌'], forest: ['🌱','🦌','🐺'], mountain: ['🪨','🦅'],
+};
+const TIERS = [
+  { name:'荒芜之海', bio:0,   ic:'🌑', goal:'唤醒海洋与陆地' },
+  { name:'绿意初生', bio:25,  ic:'🌱', goal:'解锁森林与山地' },
+  { name:'生命繁盛', bio:90,  ic:'🐾', goal:'解锁房屋与村民' },
+  { name:'智慧之火', bio:220, ic:'🔥', goal:'生命加速，冲击飞升' },
+  { name:'星海彼岸', bio:550, ic:'🌟', goal:'飞升成神', win:true },
+];
+const TOOL_TIER = { void:0, water:0, plain:0, forest:1, mountain:1, house:2, temple:3 };
+
+const HOUSE_COST = 30;
+const TEMPLE_COST = 60;
+const VILLAGER_COST = 20;
+const VILLAGER_PER_HOUSE = 3;
+const EXPAND_CHANCE = 0.10;
+const EXPAND_MAX = 1;
+const DEFLECT_COST = 25;
+
+const DISASTERS = [
+  { name:'陨石坠落', icon:'☄️', stab:-10, apply(g,x,y){ g[y][x] = {t:'void',l:0,house:false}; } },
+  { name:'旱灾',     icon:'☀️', stab:-6,  apply(g,x,y){ g[y][x] = {t:'void',l:0,house:false}; }, only:'water' },
+  { name:'山崩',     icon:'🪨', stab:-6,  apply(g,x,y){ g[y][x] = {t:'void',l:0,house:false}; }, only:'mountain' },
+  { name:'林火',     icon:'🔥', stab:-5,  apply(g,x,y){ g[y][x].l = 0; }, only:'forest' },
+  { name:'瘟疫',     icon:'🦠', stab:-5,  apply(g,x,y){ g[y][x].l = 0; }, life:true },
+];
+
+const UPGRADES = [
+  { id:'energy',    name:'初始能量',   desc:'开局能量 +40',           cost:1, max:4 },
+  { id:'stability', name:'初始稳定',   desc:'开局稳定度 +15',          cost:1, max:4 },
+  { id:'eff',       name:'能量效率',   desc:'每回合额外 +2 能量',       cost:2, max:3 },
+  { id:'delay',     name:'星体护盾',   desc:'天灾间隔 +3 回合',         cost:2, max:3 },
+  { id:'life',      name:'生命富集',   desc:'所有地块生命上限 +1',       cost:3, max:2 },
+  { id:'oasis',     name:'初始绿洲',   desc:'开局自带森林与平原',        cost:2, max:1 },
+];
+const BLESSINGS = [
+  { id:'water',   ic:'🌊', name:'海洋富饶', desc:'水域每回合额外 +2 能量' },
+  { id:'forest',  ic:'🌲', name:'森林庇护', desc:'森林地块生命上限 +1' },
+  { id:'growth',  ic:'✨', name:'生命涌动', desc:'生命生长概率 +15%' },
+  { id:'base',    ic:'⚡', name:'能量核心', desc:'基础能量产出 +3/回合' },
+  { id:'calm',    ic:'🛡', name:'钢铁星球', desc:'稳定度下降减半' },
+  { id:'foresee', ic:'🔮', name:'先知之眼', desc:'天灾预警提前 2 回合' },
+  { id:'plain',   ic:'🌿', name:'肥沃大地', desc:'平原生命上限 +1' },
+  { id:'pop',     ic:'👨‍👩‍👧', name:'人口繁荣', desc:'每栋房屋多支持 1 名村民' },
+  { id:'evolve',  ic:'🧬', name:'进化加速', desc:'进化值获取 +25%' },
+];
+const META_KEY = 'star-sandbox-meta-v2';
+
+let meta = { dust:0, ups:{} };
+UPGRADES.forEach(u => meta.ups[u.id] = 0);
+function loadMeta(){ try{ const m=JSON.parse(localStorage.getItem(META_KEY)); if(m){ meta.dust=m.dust||0; UPGRADES.forEach(u=>meta.ups[u.id]=m.ups[u.id]||0);} }catch(e){} }
+function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(meta)); }catch(e){} }
+
+let grid=[], energy=0, stability=100, score=0, tick=0, pop=0;
+let running=false, speed=2, selected='water', currentTier=0;
+let pending=null, disasterAt=0, nextEvent=0;
+let objIndex=0, deflectedOnce=false, blessings={};
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let TILE=34, hover=null;
+
+let particles=[], floaters=[], shake=0;
+
+// ---------- grid ----------
+function resetGrid(){ grid=[]; for(let y=0;y<SIZE;y++){ grid[y]=[]; for(let x=0;x<SIZE;x++) grid[y][x]={t:'void',l:0,house:false}; } }
+
+function newRun(){
+  resetGrid();
+  tick=0; score=0; pop=0; currentTier=0; pending=null; objIndex=0; deflectedOnce=false; blessings={};
+  stability = 100 + 15*meta.ups.stability;
+  energy = 60 + 40*meta.ups.energy;
+  running=false;
+  if(meta.ups.oasis){ const cx=Math.floor(SIZE/2), cy=Math.floor(SIZE/2);
+    grid[cy][cx]={t:'forest',l:0,house:false}; grid[cy][cx-1]={t:'plain',l:0,house:false};
+    grid[cy][cx+1]={t:'plain',l:0,house:false}; grid[cy-1][cx]={t:'water',l:0,house:false}; }
+  scheduleDisaster();
+  nextEvent = eventInterval();
+  clearLog(); addLog('意识苏醒，开始创世。', 'good');
+  buildPalette(); buildLegend(); refreshHUD();
+}
+
+function neighbors(x,y){ const o=[]; for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy)continue; const nx=x+dx,ny=y+dy; if(nx>=0&&nx<SIZE&&ny>=0&&ny<SIZE)o.push({x:nx,y:ny,t:grid[ny][nx].t}); } return o; }
+function lifeCap(x,y){ const t=grid[y][x].t; if(t==='void')return 0; let cap=TERRAIN[t].cap + meta.ups.life; const ns=neighbors(x,y); if((t==='plain'||t==='forest') && ns.some(n=>n.t==='water')) cap++; if(t==='mountain' && ns.some(n=>n.t==='forest')) cap++; if(ns.some(n=>grid[n.y][n.x].temple)) cap++; if(t==='forest' && blessings.forest) cap++; if(t==='plain' && blessings.plain) cap++; return Math.min(cap,4); }
+function tileGrows(x,y){ if(grid[y][x].t==='void')return false; return neighbors(x,y).some(n=>n.t!=='void'); }
+function growthChance(){ let c=currentTier>=3?0.45:0.30; if(blessings.growth)c+=0.15*blessings.growth; return c; }
+function disasterInterval(){ return 10 + 3*meta.ups.delay + randInt(-2,2); }
+function warnAhead(){ return blessings.foresee ? 5 : 3; }
+function eventInterval(){ return 11 + randInt(-3,3); }
+
+function countHouses(){ let c=0; for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) if(grid[y][x].house)c++; return c; }
+function countTemples(){ let c=0; for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) if(grid[y][x].temple)c++; return c; }
+function maxPop(){ return countHouses()*(VILLAGER_PER_HOUSE + (blessings.pop||0)); }
+function findFrontier(){ const c=[]; for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){ if(grid[y][x].t==='void'&&neighbors(x,y).some(n=>n.t!=='void'))c.push({x,y}); } return c.length?c[randInt(0,c.length-1)]:null; }
+function allTiles(pred){ const r=[]; for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){ if(pred(grid[y][x],x,y))r.push({x,y,c:grid[y][x]}); } return r; }
+function countTerrain(t){ let c=0; for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) if(grid[y][x].t===t)c++; return c; }
+
+const OBJECTIVES = [
+  { text:'放置 3 块海洋',            check:()=>countTerrain('water')>=3,  reward:10 },
+  { text:'放置 3 块平原',            check:()=>countTerrain('plain')>=3,  reward:10 },
+  { text:'让进化值达到 25',          check:()=>score>=25,                  reward:20 },
+  { text:'放置 2 块森林',            check:()=>countTerrain('forest')>=2, reward:20 },
+  { text:'让进化值达到 90',          check:()=>score>=90,                  reward:30 },
+  { text:'建造 1 栋房屋',            check:()=>countHouses()>=1,           reward:25 },
+  { text:'招募 1 名村民',            check:()=>pop>=1,                     reward:25 },
+  { text:'偏转 1 次天灾',            check:()=>deflectedOnce,              reward:25 },
+  { text:'让进化值达到 220',         check:()=>score>=220,                 reward:50 },
+  { text:'飞升成神（进化值 550）',    check:()=>score>=550,                 reward:100 },
+];
+function checkObjectives(){
+  const o=OBJECTIVES[objIndex];
+  if(!o) return;
+  if(o.check()){
+    energy += o.reward;
+    addLog(`🎯 完成目标：${o.text}（+${o.reward} 能量）`,'good');
+    toast(`🎯 完成目标：${o.text}`,'good');
+    spawnBurst(TILE*SIZE/2, TILE*SIZE/2, '#26d07c', 16); sfx('choose');
+    objIndex++;
+    refreshHUD();
+  }
+}
+
+// ---------- tutorial ----------
+const TUT_KEY='star-sandbox-tut-v1';
+let tutorial={active:false,step:0}, tutorialDone=false;
+function loadTut(){ try{ tutorialDone = localStorage.getItem(TUT_KEY)==='1'; }catch(e){} }
+function saveTut(){ try{ localStorage.setItem(TUT_KEY, tutorialDone?'1':'0'); }catch(e){} }
+const TUTORIAL=[
+  { text:'① 选择「海洋」工具，点击地图空格放置 3 块海洋', pulse:'tool-water', check:()=>countTerrain('water')>=3 },
+  { text:'② 选择「平原」工具，紧挨海洋放置 3 块平原（长得更快）', pulse:'tool-plain', check:()=>countTerrain('plain')>=3 },
+  { text:'③ 生命会自动生长并产生能量，等待进化值达到 15', pulse:null, check:()=>score>=15 },
+  { text:'④ 进化值到 25 解锁「森林」，放置 2 块森林', pulse:'tool-forest', check:()=>countTerrain('forest')>=2 },
+  { text:'⑤ 进化值到 90 解锁「房屋」，选房屋工具建 1 栋', pulse:'tool-house', check:()=>countHouses()>=1 },
+  { text:'⑥ 点击「招募村民」按钮，招募 1 名村民', pulse:'btnRecruit', check:()=>pop>=1 },
+];
+function startTutorial(){
+  tutorial.active=true; tutorial.step=0; speed=1;
+  updateRunButtons();
+  document.getElementById('tutorial').style.display='block';
+  updateTutorial();
+}
+function endTutorial(){
+  tutorial.active=false;
+  document.getElementById('tutorial').style.display='none';
+  document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));
+  tutorialDone=true; saveTut();
+  scheduleDisaster(); nextEvent=tick+eventInterval();
+  addLog('🎓 教学完成，开始自由创世！','good'); toast('🎓 教学完成！','good');
+  refreshHUD();
+}
+function updateTutorial(){
+  if(!tutorial.active) return;
+  const s=TUTORIAL[tutorial.step];
+  if(!s){ endTutorial(); return; }
+  document.getElementById('tutText').textContent=s.text;
+  document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));
+  if(s.pulse){ const el=document.getElementById(s.pulse); if(el) el.classList.add('pulse'); }
+}
+function checkTutorial(){
+  if(!tutorial.active) return;
+  const s=TUTORIAL[tutorial.step];
+  if(s && s.check()){
+    tutorial.step++;
+    if(tutorial.step>=TUTORIAL.length) endTutorial();
+    else updateTutorial();
+  }
+}
+
+// ---------- tick ----------
+function tickOnce(){
+  tick++;
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){ const c=grid[y][x];
+    if(c.t==='void'){ c.l=0; continue; }
+    const cap=lifeCap(x,y);
+    if(tileGrows(x,y)){ if(c.l<cap && Math.random()<growthChance()){ c.l++; if(Math.random()<0.2) spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#26d07c',3); } }
+    else { if(c.l>0 && Math.random()<0.5) c.l--; }
+  }
+
+  const mp=maxPop();
+  if(pop>mp){ addLog(`房屋减少，${pop-mp} 名村民离去`, 'warn'); pop=mp; }
+  let work=0, expanded=0;
+  for(let i=0;i<pop;i++){
+    if(expanded<EXPAND_MAX && Math.random()<EXPAND_CHANCE){
+      const f=findFrontier();
+      if(f){ grid[f.y][f.x]={t:'plain',l:0,house:false}; expanded++; spawnBurst((f.x+0.5)*TILE,(f.y+0.5)*TILE,'#7fa86b',5); sfx('grow'); }
+      else work+=1;
+    } else work+=1;
+  }
+
+  let lifeTotal=0;
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) lifeTotal+=grid[y][x].l;
+  const tm=countTemples();
+  let sg = lifeTotal + tm*2;
+  if(blessings.evolve) sg = Math.round(sg*(1+0.25*blessings.evolve));
+  score += sg;
+  energy += lifeTotal + 2 + 2*meta.ups.eff + work + (currentTier>=3?2:0) + tm*3
+         + (blessings.water ? countTerrain('water')*2*blessings.water : 0)
+         + (blessings.base ? 3*blessings.base : 0);
+  stability -= (blessings.calm ? 0.2 : 0.4);
+
+  if(!tutorial.active){
+    if(pending){
+      if(tick>=disasterAt){ strikeDisaster(); }
+    } else if(tick>=disasterAt){ scheduleDisaster(); }
+  }
+
+  if(checkTier()){ return; }
+  if(stability<=0){ stability=0; gameOver(false); return; }
+  if(!tutorial.active && tick>=nextEvent){ triggerEvent(); }
+
+  refreshHUD();
+  checkObjectives(); checkTutorial();
+}
+
+function scheduleDisaster(){
+  disasterAt = tick + disasterInterval();
+  pending = pickDisaster();
+}
+function pickDisaster(){
+  const opts = DISASTERS.filter(d=>findTarget(d));
+  if(!opts.length) return null;
+  const d=opts[randInt(0,opts.length-1)], t=findTarget(d);
+  return {d, x:t.x, y:t.y};
+}
+function findTarget(d){
+  const c=[];
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){ const cell=grid[y][x];
+    if(d.only && cell.t!==d.only) continue;
+    if(d.life && cell.l===0) continue;
+    if(!d.only && !d.life && cell.t==='void') continue;
+    c.push({x,y}); }
+  return c.length?c[randInt(0,c.length-1)]:null;
+}
+function strikeDisaster(){
+  pending.d.apply(grid, pending.x, pending.y);
+  stability += pending.d.stab;
+  addLog(`${pending.d.icon} ${pending.d.name}降临于 (${pending.x},${pending.y})！稳定度 ${pending.d.stab}`, 'danger');
+  addShake(11); spawnBurst((pending.x+0.5)*TILE,(pending.y+0.5)*TILE,'#ff6248',28); sfx('disaster');
+  pending=null; scheduleDisaster();
+}
+function deflect(){
+  if(!pending){ return; }
+  if(energy<DEFLECT_COST){ toast('能量不足，无法偏转','danger'); sfx('error'); return; }
+  energy-=DEFLECT_COST;
+  deflectedOnce=true;
+  addLog(`🛡 你偏转了即将到来的${pending.d.name}`, 'good');
+  pending=null; scheduleDisaster();
+  sfx('choose'); refreshHUD(); checkObjectives(); checkTutorial();
+}
+
+function checkTier(){
+  const next=TIERS[currentTier+1];
+  if(!next || score<next.bio) return false;
+  currentTier++;
+  const t=TIERS[currentTier];
+  buildPalette(); buildLegend();
+  addLog(`🌟 进入新时代：${t.name}！${t.goal}`, 'good');
+  toast(`🌟 新时代：${t.name}`, 'good');
+  addShake(9); spawnBurst(TILE*SIZE/2, TILE*SIZE/2, '#ffd166', 42); sfx('tier');
+  refreshHUD();
+  if(t.win){ gameOver(true); return false; }
+  offerBlessing();
+  return true;
+}
+
+// ---------- events ----------
+const EVENTS = [
+  { em:'☄️', title:'彗星临近', desc:'一颗彗星正朝你的星球飞来。', choices:[
+    { label:'🛡 偏转 (-25能量)', req:()=>energy>=25, act(){ energy-=25; return '你引导彗星偏转，星球安然无恙。'; } },
+    { label:'🔭 研究 (+40进化)', act(){ score+=40; if(ruinTile()){ addShake(8); return '研究成功，但彗星碎片坠落了！'; } return '你从彗星中获取了宝贵知识。'; } },
+    { label:'无视', act(){ ruinTile(); addShake(9); return '彗星坠落，一片土地化为焦土。'; } },
+  ]},
+  { em:'🌱', title:'外来种子', desc:'一阵宇宙风吹来一些陌生的种子。', choices:[
+    { label:'播种 → 森林×2', act(){ spawnTiles('forest',2); return '两片森林萌芽了。'; } },
+    { label:'研究 (+25进化)', act(){ score+=25; return '你破译了种子的基因。'; } },
+    { label:'丢弃 (+10能量)', act(){ energy+=10; return '你把这些种子转化为能量。'; } },
+  ]},
+  { em:'☀️', title:'漫长干旱', desc:'热浪逼近，水汽正在蒸发。', choices:[
+    { label:'💧 灌溉 (-20能量)', req:()=>energy>=20, act(){ energy-=20; return '你唤来雨水，旱情缓解。'; } },
+    { label:'⛏️ 村民挖井 (+15稳定)', req:()=>pop>0, act(){ stability=Math.min(100,stability+15); return '村民挖出井水，民心安定。'; } },
+    { label:'硬扛', act(){ stability-=6; if(ruinWater())return '旱灾吞噬了一片水域。'; return '你咬牙撑过了旱季。'; } },
+  ]},
+  { em:'🔮', title:'星灵低语', desc:'虚空中传来古老存在的低语。', choices:[
+    { label:'🙏 献祭 (-15稳定, +60进化)', act(){ stability-=15; score+=60; return '你以星球元气换取智慧。'; } },
+    { label:'👂 聆听 (+20进化)', act(){ score+=20; return '你聆听了片刻低语。'; } },
+    { label:'无视', act(){ return '你选择不听不闻。'; } },
+  ]},
+  { em:'🦌', title:'动物迁徙', desc:'一群野兽在寻找新的家园。', choices:[
+    { label:'🏡 接纳 → 生命+4', act(){ growRandom(4); return '它们在此繁衍生息。'; } },
+    { label:'驱赶 (+15能量)', act(){ energy+=15; return '你把它们赶走，取其能量。'; } },
+    { label:'🛡 设保护区 (-15能量, +40进化)', req:()=>energy>=15, act(){ energy-=15; score+=40; return '保护区让生态大大丰富。'; } },
+  ]},
+  { em:'🌋', title:'火山苏醒', desc:'一座火山正在地下蠢蠢欲动。', choices:[
+    { label:'疏导 (-25能量)', req:()=>energy>=25, act(){ energy-=25; return '你疏导了地火，归于平静。'; } },
+    { label:'引流 (+30能量, 毁一块地)', act(){ energy+=30; ruinTile(); addShake(8); return '你引导熔岩喷发，换来能量。'; } },
+    { label:'忽视', act(){ ruinTile(); stability-=8; addShake(9); return '火山喷发，损失惨重。'; } },
+  ]},
+  { em:'🌾', title:'丰收之兆', desc:'风调雨顺，万物生长。', choices:[
+    { label:'🎉 庆祝 (+15稳定)', act(){ stability=Math.min(100,stability+15); return '子民欢庆，星球和谐。'; } },
+    { label:'储存 (+30能量)', act(){ energy+=30; return '你囤积了盈余的能量。'; } },
+    { label:'播种 → 平原×2', act(){ spawnTiles('plain',2); return '新的土地被开垦。'; } },
+  ]},
+  { em:'🛸', title:'神秘访客', desc:'一个陌生文明发来讯号。', choices:[
+    { label:'📖 接受教导 (+50进化)', act(){ score+=50; return '他们传授了深奥的知识。'; } },
+    { label:'💱 交易 (+25能量, -5稳定)', act(){ energy+=25; stability-=5; return '交易完成，星球略有动荡。'; } },
+    { label:'婉拒', act(){ return '你礼貌地关上了通讯。'; } },
+  ]},
+  { em:'🌠', title:'陨石雨', desc:'密集的陨石群正扫过你的星球。', choices:[
+    { label:'🛡 展开护盾 (-30能量)', req:()=>energy>=30, act(){ energy-=30; return '护盾挡下了所有陨石。'; } },
+    { label:'💎 收集陨铁 (+40能量, 毁2地)', act(){ energy+=40; ruinTiles(2); addShake(10); return '你收集了陨铁，代价是两处焦土。'; } },
+    { label:'无视', act(){ ruinTiles(2); addShake(10); return '陨石雨砸出两个坑洞。'; } },
+  ]},
+  { em:'🧑‍🚀', title:'星际游商', desc:'一个游商路过，想和你做笔交易。', choices:[
+    { label:'💰 卖出生命 (+40能量, 生命-3)', act(){ energy+=40; reduceLife(3); return '你变卖了部分生灵。'; } },
+    { label:'📦 购买典籍 (-20能量, +50进化)', req:()=>energy>=20, act(){ energy-=20; score+=50; return '你买到了古老典籍。'; } },
+    { label:'婉拒', act(){ return '你摇了摇头，游商离去。'; } },
+  ]},
+];
+function ruinTile(){ const t=allTiles(c=>c.t!=='void'); if(!t.length)return false; const p=t[randInt(0,t.length-1)]; grid[p.y][p.x]={t:'void',l:0,house:false}; return true; }
+function ruinWater(){ const t=allTiles(c=>c.t==='water'); if(!t.length)return false; const p=t[randInt(0,t.length-1)]; grid[p.y][p.x]={t:'void',l:0,house:false}; return true; }
+function spawnTiles(type,n){ const v=allTiles(c=>c.t==='void'); for(let i=0;i<n&&v.length;i++){ const idx=randInt(0,v.length-1), p=v[idx]; grid[p.y][p.x]={t:type,l:0,house:false}; v.splice(idx,1); } }
+function growRandom(n){ const c=allTiles((cc,x,y)=>cc.t!=='void'&&cc.l<lifeCap(x,y)); for(let i=0;i<n&&c.length;i++){ const idx=randInt(0,c.length-1), p=c[idx]; grid[p.y][p.x].l++; c.splice(idx,1); } }
+function ruinTiles(n){ for(let i=0;i<n;i++) if(!ruinTile()) break; }
+function reduceLife(n){ const c=allTiles(cc=>cc.l>0); for(let i=0;i<n&&c.length;i++){ const idx=randInt(0,c.length-1); c[idx].c.l--; c.splice(idx,1); } }
+
+function triggerEvent(){
+  const ev=EVENTS[randInt(0,EVENTS.length-1)];
+  running=false; updateRunButtons();
+  document.getElementById('eventEm').textContent=ev.em;
+  document.getElementById('eventTitle').textContent=ev.title;
+  document.getElementById('eventDesc').textContent=ev.desc;
+  const box=document.getElementById('eventChoices'); box.innerHTML='';
+  ev.choices.forEach(ch=>{
+    const disabled=ch.req && !ch.req();
+    const b=document.createElement('button'); b.className='bigbtn'; b.textContent=ch.label; b.disabled=disabled;
+    if(!disabled) b.onclick=()=>{ const msg=ch.act(); addLog(`📜 ${ev.title}：${msg}`,'good'); hide('eventOverlay'); running=true; updateRunButtons(); nextEvent=tick+eventInterval(); sfx('choose'); refreshHUD(); };
+    box.appendChild(b);
+  });
+  show('eventOverlay'); sfx('event');
+}
+
+function offerBlessing(){
+  running=false; updateRunButtons();
+  const pool=BLESSINGS.slice(), picks=[];
+  for(let i=0;i<3&&pool.length;i++){ const idx=randInt(0,pool.length-1); picks.push(pool[idx]); pool.splice(idx,1); }
+  const box=document.getElementById('blessChoices'); box.innerHTML='';
+  picks.forEach(bl=>{
+    const b=document.createElement('button'); b.className='bigbtn';
+    b.innerHTML=`<div style="font-size:15px">${bl.ic} ${bl.name}</div><div style="font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;margin-top:2px">${bl.desc}</div>`;
+    b.style.textAlign='left';
+    b.onclick=()=>{ blessings[bl.id]=(blessings[bl.id]||0)+1; addLog(`🌟 获得祝福：${bl.name}（${bl.desc}）`,'good'); hide('blessOverlay'); running=true; updateRunButtons(); buildLegend(); sfx('tier'); refreshHUD(); };
+    box.appendChild(b);
+  });
+  show('blessOverlay'); sfx('event');
+}
+
+// ---------- actions ----------
+function place(x,y){
+  if(x<0||x>=SIZE||y<0||y>=SIZE) return;
+  const cell=grid[y][x];
+  if(selected==='void'){ if(cell.t==='void')return; cell.t='void'; cell.l=0; cell.house=false; cell.temple=false; render(); return; }
+  if(TOOL_TIER[selected] > currentTier){ toast('尚未解锁该工具','warn'); return; }
+  if(selected==='house'){
+    if(cell.house){ cell.house=false; render(); refreshHUD(); return; }
+    if(cell.t==='water'){ toast('房屋不能建在水面上','warn'); sfx('error'); return; }
+    if(energy<HOUSE_COST){ toast('能量不足！','danger'); sfx('error'); return; }
+    energy-=HOUSE_COST; if(cell.t==='void')cell.t='plain'; cell.l=0; cell.house=true; cell.temple=false;
+    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#ffd166',8); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); return;
+  }
+  if(selected==='temple'){
+    if(cell.temple){ cell.temple=false; render(); refreshHUD(); return; }
+    if(cell.t==='water'){ toast('圣殿不能建在水面上','warn'); sfx('error'); return; }
+    if(energy<TEMPLE_COST){ toast('能量不足！','danger'); sfx('error'); return; }
+    energy-=TEMPLE_COST; if(cell.t==='void')cell.t='plain'; cell.l=0; cell.temple=true; cell.house=false;
+    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#5b8cff',10); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); return;
+  }
+  const t=TERRAIN[selected];
+  if(cell.t===selected) return;
+  if(energy<t.cost){ toast('能量不足！','danger'); sfx('error'); return; }
+  energy-=t.cost; cell.t=selected; cell.l=0; cell.house=false; cell.temple=false;
+  spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,t.color,6); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial();
+}
+function recruit(){
+  const mp=maxPop();
+  if(currentTier<2){ toast('第3时代解锁村民','warn'); return; }
+  if(mp===0){ toast('先建造房屋','warn'); sfx('error'); return; }
+  if(pop>=mp){ toast('已达人口上限','warn'); sfx('error'); return; }
+  if(energy<VILLAGER_COST){ toast('能量不足！','danger'); sfx('error'); return; }
+  energy-=VILLAGER_COST; pop++;
+  addLog(`👨‍🌾 招募了一名村民 (${pop}/${mp})`,'good'); sfx('recruit'); refreshHUD(); checkObjectives(); checkTutorial();
+}
+function soothe(){
+  if(energy<30){ toast('能量不足，无法安抚。','danger'); sfx('error'); return; }
+  energy-=30; stability=Math.min(100,stability+12);
+  addLog('🕊 安抚星球：稳定度 +12','good'); refreshHUD();
+}
+
+// ---------- end ----------
+function gameOver(win){
+  running=false; updateRunButtons();
+  const bonus = win ? 2 : 1;
+  const dust = Math.max(1, Math.floor(score/100)) * bonus;
+  meta.dust += dust; saveMeta();
+  document.getElementById('overTitle').textContent = win ? '🌟 飞升成神！' : '💀 星球熄灭';
+  document.getElementById('overTitle').style.color = win ? 'var(--accent2)' : 'var(--danger)';
+  document.getElementById('overStats').innerHTML =
+    `你存活了 <b>${tick}</b> 回合，进化值 <b style="color:var(--accent)">${score}</b>，达到时代 <b>${TIERS[currentTier].name}</b>。`;
+  document.getElementById('overDust').textContent = `✨ 获得星尘 +${dust}（当前 ${meta.dust}）`;
+  renderShop(); show('overOverlay');
+  if(win) sfx('win');
+}
+function renderShop(){
+  const box=document.getElementById('shop'); box.innerHTML='';
+  UPGRADES.forEach(u=>{
+    const lv=meta.ups[u.id], maxed=lv>=u.max;
+    const it=document.createElement('div'); it.className='shopitem';
+    it.innerHTML=`<div class="info"><div class="name">${u.name} <span class="lv">Lv.${lv}/${u.max}</span></div><div class="desc">${u.desc}</div></div>
+      <button ${maxed?'disabled':''} ${meta.dust<u.cost?'disabled':''}>${maxed?'已满级':(u.cost+' ✨')}</button>`;
+    if(!maxed) it.querySelector('button').onclick=()=>buyUpgrade(u.id);
+    box.appendChild(it);
+  });
+}
+function buyUpgrade(id){ const u=UPGRADES.find(x=>x.id===id); if(meta.ups[id]>=u.max||meta.dust<u.cost)return; meta.dust-=u.cost; meta.ups[id]++; saveMeta(); document.getElementById('overDust').textContent=`✨ 星尘余额：${meta.dust}`; renderShop(); }
+
+// ---------- fx ----------
+function addShake(n){ shake=Math.max(shake,n); }
+function spawnBurst(px,py,color,n){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, s=1+Math.random()*3; particles.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.6+Math.random()*0.4,maxLife:1,color,size:2+Math.random()*3}); } }
+function addFloater(px,py,text,color){ floaters.push({x:px,y:py,text,color,life:1.2,vy:-0.8}); }
+function updateFX(dt){
+  shake=Math.max(0,shake-dt*28);
+  for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.vx*dt*60; p.y+=p.vy*dt*60; p.life-=dt; if(p.life<=0)particles.splice(i,1); }
+  for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.y+=f.vy*dt*60; f.life-=dt; if(f.life<=0)floaters.splice(i,1); }
+}
+
+// ---------- render ----------
+function computeTileSize(){
+  const b=document.getElementById('board');
+  const mw=b.clientWidth-4, mh=b.clientHeight-4;
+  TILE=Math.max(16,Math.min(40,Math.floor(Math.min(mw,mh)/SIZE)));
+  const dpr=window.devicePixelRatio||1;
+  cv.width=TILE*SIZE*dpr; cv.height=TILE*SIZE*dpr;
+  cv.style.width=(TILE*SIZE)+'px'; cv.style.height=(TILE*SIZE)+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function render(){
+  ctx.clearRect(0,0,TILE*SIZE,TILE*SIZE);
+  ctx.save();
+  if(shake>0.2) ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+    const c=grid[y][x], t=TERRAIN[c.t];
+    ctx.fillStyle=t.color; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    if(c.t==='void'){
+      const h=(x*73856093 ^ y*19349663)>>>0;
+      if(h%100 < 12){
+        const tw=0.35+0.65*Math.abs(Math.sin(Date.now()/900 + (h%1000)/100));
+        ctx.fillStyle=`rgba(255,255,255,${(tw*0.55).toFixed(2)})`;
+        const sx=x*TILE+TILE/2+((h>>4)%(TILE-8))-TILE/2+4;
+        const sy=y*TILE+TILE/2+((h>>9)%(TILE-8))-TILE/2+4;
+        ctx.beginPath(); ctx.arc(sx,sy,1.1,0,Math.PI*2); ctx.fill();
+      }
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+      if(c.house){
+        ctx.font=`${Math.floor(TILE*0.66)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('🏠',x*TILE+TILE/2,y*TILE+TILE/2+1);
+        if(c.l>0){ const em=LIFE_EMOJI[c.t][Math.min(c.l,LIFE_EMOJI[c.t].length)-1]; ctx.font=`${Math.floor(TILE*0.4)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText(em,x*TILE+TILE-2,y*TILE+1); }
+      } else if(c.temple){
+        ctx.font=`${Math.floor(TILE*0.66)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('🏛️',x*TILE+TILE/2,y*TILE+TILE/2+1);
+        if(c.l>0){ const em=LIFE_EMOJI[c.t][Math.min(c.l,LIFE_EMOJI[c.t].length)-1]; ctx.font=`${Math.floor(TILE*0.4)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText(em,x*TILE+TILE-2,y*TILE+1); }
+      } else if(c.l>0){
+        const em=LIFE_EMOJI[c.t][Math.min(c.l,LIFE_EMOJI[c.t].length)-1];
+        ctx.font=`${Math.floor(TILE*0.62)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(em,x*TILE+TILE/2,y*TILE+TILE/2+1);
+      } else {
+        ctx.font=`${Math.floor(TILE*0.4)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.globalAlpha=0.25; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(t.emoji,x*TILE+TILE/2,y*TILE+TILE/2+1); ctx.globalAlpha=1;
+      }
+    }
+  }
+  // warning marker
+  if(!tutorial.active && pending && tick<disasterAt && (disasterAt-tick)<=warnAhead()){
+    const bob=Math.sin(Date.now()/150)*3;
+    ctx.font=`${Math.floor(TILE*0.8)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⚠️',(pending.x+0.5)*TILE,(pending.y+0.5)*TILE+bob);
+  }
+  // hover
+  if(hover && hover.x>=0&&hover.x<SIZE&&hover.y>=0&&hover.y<SIZE){
+    const hc=grid[hover.y][hover.x];
+    if(selected!=='void' && selected!=='house' && TOOL_TIER[selected]<=currentTier && hc.t!==selected){
+      ctx.globalAlpha=0.35; ctx.fillStyle=TERRAIN[selected].color; ctx.fillRect(hover.x*TILE,hover.y*TILE,TILE,TILE); ctx.globalAlpha=1;
+    } else if(selected==='house' && TOOL_TIER.house<=currentTier && !hc.house && hc.t!=='water'){
+      ctx.globalAlpha=0.5; ctx.font=`${Math.floor(TILE*0.6)}px "Segoe UI Emoji","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🏠',hover.x*TILE+TILE/2,hover.y*TILE+TILE/2+1); ctx.globalAlpha=1;
+    }
+    ctx.strokeStyle=(selected==='void'&&hc.t!=='void')?'rgba(255,98,72,0.8)':'rgba(255,255,255,0.7)'; ctx.lineWidth=2;
+    ctx.strokeRect(hover.x*TILE+1,hover.y*TILE+1,TILE-2,TILE-2);
+  }
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=SIZE;i++){ ctx.beginPath(); ctx.moveTo(i*TILE,0); ctx.lineTo(i*TILE,TILE*SIZE); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,i*TILE); ctx.lineTo(TILE*SIZE,i*TILE); ctx.stroke(); }
+  ctx.restore();
+  // particles
+  for(const p of particles){ ctx.globalAlpha=Math.max(0,p.life/p.maxLife); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha=1;
+  // floaters
+  for(const f of floaters){ ctx.globalAlpha=Math.max(0,f.life/1.2); ctx.fillStyle=f.color; ctx.font=`bold 14px "Segoe UI","Microsoft YaHei",sans-serif`; ctx.textAlign='center'; ctx.fillText(f.text,f.x,f.y); }
+  ctx.globalAlpha=1;
+}
+
+// ---------- HUD ----------
+function refreshHUD(){
+  document.getElementById('stEnergy').textContent=Math.floor(energy);
+  const se=document.getElementById('stStab'); se.textContent=Math.round(stability); se.className='v'+(stability<30?' danger':'');
+  document.getElementById('stScore').textContent=score;
+  document.getElementById('stPop').textContent=pop+'/'+maxPop();
+  document.getElementById('stHouse').textContent=countHouses();
+  document.getElementById('stTemple').textContent=countTemples();
+  document.getElementById('stTick').textContent=tick;
+  const sb=document.getElementById('stabBar'); sb.style.width=Math.max(0,Math.min(100,stability))+'%'; sb.className=stability<30?'low':'';
+  // era
+  const t=TIERS[currentTier], next=TIERS[currentTier+1];
+  document.getElementById('eraIc').textContent=t.ic;
+  document.getElementById('eraName').textContent='时代 '+(currentTier+1)+' · '+t.name;
+  document.getElementById('eraGoal').textContent=next ? ('目标：进化值 '+next.bio+' · '+next.goal) : t.goal;
+  const eb=document.getElementById('eraBar');
+  if(next) eb.style.width=Math.max(0,Math.min(100,(score-t.bio)/(next.bio-t.bio)*100))+'%'; else eb.style.width='100%';
+  // objective
+  const ob=document.getElementById('objective');
+  if(objIndex<OBJECTIVES.length) ob.innerHTML=`<b style="color:var(--accent2)">${objIndex+1}/${OBJECTIVES.length}</b> ${OBJECTIVES[objIndex].text}`;
+  else ob.innerHTML='✨ 全部目标达成，冲击飞升！';
+  // warning banner
+  if(!tutorial.active && pending && tick<disasterAt && (disasterAt-tick)<=warnAhead()){
+    document.getElementById('warnText').textContent=`⚠️ ${pending.d.name}将至：还剩 ${disasterAt-tick} 回合`;
+    document.getElementById('warning').style.display='flex';
+  } else { document.getElementById('warning').style.display='none'; }
+}
+function addLog(msg,kind){ const l=document.getElementById('log'); const d=document.createElement('div'); d.innerHTML=`<span class="t">${tick}</span><span class="${kind||''}">${msg}</span>`; l.appendChild(d); while(l.children.length>40)l.removeChild(l.firstChild); l.scrollTop=l.scrollHeight; }
+function clearLog(){ document.getElementById('log').innerHTML=''; }
+let toastTimer;
+function toast(msg,kind){ const el=document.getElementById('toast'); el.textContent=msg; el.style.background=kind==='danger'?'rgba(255,98,72,.96)':kind==='warn'?'rgba(255,209,102,.96)':'rgba(38,208,124,.96)'; el.style.color=kind==='warn'?'#201500':'#fff'; el.style.opacity=1; clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.style.opacity=0,1800); }
+function updateRunButtons(){ document.getElementById('btnToggle').textContent=running?'⏸ 暂停':'▶ 继续'; document.getElementById('btnSpeed').textContent='⏩ x'+speed; }
+
+// ---------- audio ----------
+let AC=null, soundOn=true;
+function ensureAudio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended')AC.resume(); }
+function tone(f,d,type,vol,when){ if(!soundOn||!AC)return; const t=AC.currentTime+(when||0); const o=AC.createOscillator(), g=AC.createGain(); o.type=type||'sine'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.1,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d+0.05); }
+function sfx(n){ ensureAudio(); if(!soundOn)return; switch(n){
+  case 'place': tone(300,0.07,'triangle',0.12); break;
+  case 'grow': tone(480+Math.random()*180,0.05,'sine',0.04); break;
+  case 'disaster': tone(85,0.4,'sawtooth',0.15); tone(55,0.5,'sine',0.15,0.05); break;
+  case 'tier': [440,550,660,880].forEach((f,i)=>tone(f,0.15,'triangle',0.12,i*0.08)); break;
+  case 'win': [523,659,784,1047].forEach((f,i)=>tone(f,0.3,'triangle',0.14,i*0.12)); break;
+  case 'choose': tone(660,0.1,'sine',0.1); break;
+  case 'event': tone(392,0.22,'sine',0.1); break;
+  case 'recruit': tone(700,0.1,'triangle',0.1); break;
+  case 'error': tone(140,0.2,'square',0.07); break;
+} }
+
+// ---------- input ----------
+function cvPos(ev){ const r=cv.getBoundingClientRect(); return { x:Math.floor((ev.clientX-r.left)/r.width*SIZE), y:Math.floor((ev.clientY-r.top)/r.height*SIZE) }; }
+cv.addEventListener('pointerdown', e=>{ e.preventDefault(); ensureAudio(); const p=cvPos(e); place(p.x,p.y); });
+cv.addEventListener('pointermove', e=>{ const r=cv.getBoundingClientRect(); hover=cvPos(e); });
+cv.addEventListener('pointerleave', ()=>hover=null);
+cv.addEventListener('contextmenu', e=>e.preventDefault());
+
+// ---------- UI build ----------
+function buildPalette(){
+  const box=document.getElementById('palette'); box.innerHTML='';
+  const keys=['void','water','plain','forest','mountain','house','temple'];
+  keys.forEach(k=>{
+    const locked=TOOL_TIER[k]>currentTier;
+    let ic,name,cost;
+    if(k==='void'){ic='🧹';name='虚空';cost='免费';}
+    else if(k==='house'){ic='🏠';name='房屋';cost=HOUSE_COST;}
+    else if(k==='temple'){ic='🏛️';name='圣殿';cost=TEMPLE_COST;}
+    else {ic=TERRAIN[k].emoji;name=TERRAIN[k].name;cost=TERRAIN[k].cost;}
+    const b=document.createElement('div');
+    b.id='tool-'+k;
+    b.className='tool'+(selected===k?' sel':'')+(locked?' lock':'');
+    b.innerHTML=`<span class="ic">${locked?'🔒':ic}</span><span>${name}</span><span class="cost">${locked?('时代'+(TOOL_TIER[k]+1)+'解锁'):cost}</span>`;
+    b.onclick=()=>{ if(locked){ toast('尚未解锁','warn'); sfx('error'); return; } selected=k; buildPalette(); };
+    box.appendChild(b);
+  });
+  if(tutorial.active) updateTutorial();
+}
+function buildLegend(){
+  const el=document.getElementById('legend'), rows=[];
+  Object.keys(TERRAIN).forEach(k=>{ const t=TERRAIN[k]; if(k==='void')return;
+    rows.push(`<div><span class="sw" style="background:${t.color}"></span>${t.name} · 生命上限 ${t.cap+meta.ups.life} · 成本 ${t.cost}</div>`); });
+  rows.push(`<div>🏠 房屋 ${HOUSE_COST} · 支持 ${VILLAGER_PER_HOUSE} 村民</div>`);
+  rows.push(`<div>🏛️ 圣殿 ${TEMPLE_COST} · +3能量/回合 +2进化/回合 · 相邻地块生命上限+1</div>`);
+  rows.push(`<div>👨‍🌾 村民 ${VILLAGER_COST} · 自动拓地或产能量</div>`);
+  rows.push(`<div style="margin-top:4px">💧 海洋旁平原/森林生命上限+1 · ⛰️ 森林旁山地生命上限+1</div>`);
+  rows.push(`<div style="margin-top:4px">生命 🐟🌱🦌🐺🦅 产生能量 · 天灾每约 ${10+3*meta.ups.delay} 回合</div>`);
+  const bl=Object.keys(blessings).map(id=>{ const b=BLESSINGS.find(x=>x.id===id); return b.ic+(blessings[id]>1?'×'+blessings[id]:''); }).join(' ');
+  if(bl) rows.push(`<div style="margin-top:4px">🌟 祝福：${bl}</div>`);
+  el.innerHTML=rows.join('');
+}
+function buildHelp(){
+  document.getElementById('helpText').innerHTML=`
+    <b>目标：</b>提高「进化值」推进时代，最终飞升成神（失败条件：稳定度归零）。<br><br>
+    <b>放置：</b>选工具点击地图。海洋/平原起步，进化值到 <b>25</b> 解锁森林/山地，到 <b>90</b> 解锁房屋/村民，到 <b>220</b> 解锁圣殿。<br><br>
+    <b>生命：</b>相邻地块会生长生命 🐟🌱🦌🐺🦅，生命越多能量越多。海洋旁的平原/森林、森林旁的山地，生命上限 +1，布局更有讲究。<br><br>
+    <b>任务：</b>左侧「当前任务」会一步步引导你，完成后奖励能量。<br><br>
+    <b>抉择事件：</b>每若干回合出现，你的选择决定资源增减、地形变化与风险。<br><br>
+    <b>天灾：</b>来临前有 3 回合预警，可花 25 能量<b>偏转</b>。<br><br>
+    <b>稳定度：</b>随时间缓慢下降，「安抚星球」回复 +12。`;
+}
+
+// ---------- loop ----------
+let last=0, acc=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!last)last=ts; const dt=ts-last; last=ts;
+  updateFX(dt/1000);
+  if(running && speed>0){ acc+=dt; const interval=1000/speed; while(running && acc>=interval){ acc-=interval; tickOnce(); } }
+  render();
+}
+
+// ---------- wire ----------
+document.getElementById('btnStart').onclick=()=>{ hide('startOverlay'); running=true; updateRunButtons(); ensureAudio(); if(!tutorialDone) startTutorial(); };
+document.getElementById('btnToggle').onclick=()=>{ running=!running; updateRunButtons(); };
+document.getElementById('btnSpeed').onclick=()=>{ speed=speed===1?2:speed===2?4:1; updateRunButtons(); };
+document.getElementById('btnSoothe').onclick=soothe;
+document.getElementById('btnRecruit').onclick=recruit;
+document.getElementById('btnDeflect').onclick=deflect;
+document.getElementById('btnRestart').onclick=()=>{ hide('overOverlay'); hide('eventOverlay'); newRun(); show('startOverlay'); };
+document.getElementById('btnAgain').onclick=()=>{ hide('overOverlay'); newRun(); show('startOverlay'); };
+document.getElementById('btnHelp').onclick=()=>show('helpOverlay');
+document.getElementById('helpClose').onclick=()=>hide('helpOverlay');
+document.getElementById('btnTutorial').onclick=()=>startTutorial();
+document.getElementById('btnSkipTut').onclick=()=>endTutorial();
+document.getElementById('btnSound').onclick=(e)=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔊':'🔇'; };
+
+// ---------- boot ----------
+function randInt(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+function show(id){ document.getElementById(id).classList.remove('hidden'); }
+function hide(id){ document.getElementById(id).classList.add('hidden'); }
+
+loadMeta(); loadTut(); buildPalette(); buildLegend(); buildHelp(); newRun(); computeTileSize(); render();
+document.getElementById('startDust').textContent=meta.dust>0?`✨ 星尘余额：${meta.dust}`:'';
+show('startOverlay');
+window.addEventListener('resize',()=>{ computeTileSize(); render(); });
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
