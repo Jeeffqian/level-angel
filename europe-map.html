@@ -2653,22 +2653,26 @@ function netOnMsg(m) {
 document.getElementById('btnOnline').addEventListener('click', () => {
   document.getElementById('modeOv').classList.add('hidden');
   document.getElementById('onlineOv').classList.remove('hidden');
+  document.getElementById('onCodeRow').classList.add('hidden');
+  document.getElementById('onJoin').classList.add('hidden');
+  document.getElementById('onHost').classList.remove('hidden');
+  document.getElementById('onViewJoin').classList.remove('hidden');
   const nm = document.getElementById('onName');
   if (!nm.value) nm.value = '玩家' + Math.floor(Math.random() * 900 + 100);
   netHint('点「创建房间」开新局，把房间码发给朋友；朋友点「加入房间」输入房间码即可进场。', '');
 });
 document.getElementById('onJoin').addEventListener('click', netCoreJoin);
 document.getElementById('onHost').addEventListener('click', () => {
-  document.getElementById('onCode').classList.add('hidden');
+  document.getElementById('onCodeRow').classList.add('hidden');
   document.getElementById('onJoin').classList.add('hidden');
-  document.getElementById('onHost').classList.add('hidden');
-  document.getElementById('onViewJoin').classList.remove('hidden');
   netJoin();
 });
 document.getElementById('onViewJoin').addEventListener('click', () => {
-  document.getElementById('onCode').classList.remove('hidden');
+  document.getElementById('onCodeRow').classList.remove('hidden');
   document.getElementById('onJoin').classList.remove('hidden');
-  document.getElementById('onHost').classList.remove('hidden');
+  document.getElementById('onHost').classList.add('hidden');
+  document.getElementById('onViewJoin').classList.add('hidden');
+  document.getElementById('onCode').focus();
 });
 document.getElementById('onBack').addEventListener('click', () => {
   netLeave();
