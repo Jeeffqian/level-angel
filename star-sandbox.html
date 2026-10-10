@@ -100,6 +100,8 @@ footer { text-align: center; color: #4d5563; font-size: 12px; padding: 8px 0 0; 
   <header>
     <h1>星群沙盘<small>STAR SANDBOX · 进化 · 抉择 · 肉鸽</small></h1>
     <div class="hdrbtns">
+      <span id="mpBadge" class="hidden" style="font-size:12px;color:var(--accent2);border:1px solid var(--accent2);padding:3px 9px;border-radius:999px;align-self:center">👥 联机</span>
+      <button id="btnLeave" class="hidden" style="color:var(--danger)">👋 离开</button>
       <button id="btnSound" title="音效">🔊</button>
       <button id="btnTutorial" title="新手教学">🎓</button>
       <button id="btnHelp" title="帮助">❓</button>
@@ -200,6 +202,29 @@ footer { text-align: center; color: #4d5563; font-size: 12px; padding: 8px 0 0; 
     </div>
     <div class="dust" id="startDust"></div>
     <button class="bigbtn primary" id="btnStart">开始创世</button>
+    <button class="bigbtn" id="btnMP" style="margin-top:8px">🌐 联机模式</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="mpOverlay">
+  <div class="modal">
+    <h2>🌐 联机模式</h2>
+    <div class="lead">和朋友共同创造同一颗星球：一人<b>创建房间</b>，另一人<b>加入房间</b>输入房间号。</div>
+    <div id="mpStatus" style="font-weight:700;color:var(--accent2);font-size:14px;margin-bottom:12px;min-height:20px"></div>
+    <div class="row" id="mpCreateRow">
+      <button class="primary" id="btnHost">创建房间</button>
+      <button id="btnShowJoin">加入房间</button>
+    </div>
+    <div class="row hidden" id="mpJoinRow" style="margin-top:8px">
+      <input id="mpCode" maxlength="5" autocomplete="off" placeholder="5位房间号" style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px;font-size:16px;letter-spacing:3px;text-align:center" />
+      <button class="primary" id="btnJoin">加入</button>
+    </div>
+    <div class="row hidden" id="mpStartRow" style="margin-top:8px">
+      <button class="primary" id="btnMPStart" style="width:100%">开始游戏</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnMPBack" style="width:100%">返回</button>
+    </div>
   </div>
 </div>
 
@@ -231,6 +256,7 @@ footer { text-align: center; color: #4d5563; font-size: 12px; padding: 8px 0 0; 
   </div>
 </div>
 
+<script src="peerjs.min.js"></script>
 <script>
 "use strict";
 const SIZE = 16;
@@ -453,6 +479,7 @@ function tickOnce(){
 
   refreshHUD();
   checkObjectives(); checkTutorial();
+  netBroadcastState();
 }
 
 function scheduleDisaster(){
@@ -482,13 +509,14 @@ function strikeDisaster(){
   pending=null; scheduleDisaster();
 }
 function deflect(){
+  if(online && !isHost){ netSend({t:'act', a:{k:'deflect'}}); return; }
   if(!pending){ return; }
   if(energy<DEFLECT_COST){ toast('能量不足，无法偏转','danger'); sfx('error'); return; }
   energy-=DEFLECT_COST;
   deflectedOnce=true;
   addLog(`🛡 你偏转了即将到来的${pending.d.name}`, 'good');
   pending=null; scheduleDisaster();
-  sfx('choose'); refreshHUD(); checkObjectives(); checkTutorial();
+  sfx('choose'); refreshHUD(); checkObjectives(); checkTutorial(); netBroadcastState();
 }
 
 function checkTier(){
@@ -600,42 +628,45 @@ function offerBlessing(){
 // ---------- actions ----------
 function place(x,y){
   if(x<0||x>=SIZE||y<0||y>=SIZE) return;
+  if(online && !isHost){ netSend({t:'act', a:{k:'place', x, y, tool:selected}}); return; }
   const cell=grid[y][x];
-  if(selected==='void'){ if(cell.t==='void')return; cell.t='void'; cell.l=0; cell.house=false; cell.temple=false; render(); return; }
+  if(selected==='void'){ if(cell.t==='void')return; cell.t='void'; cell.l=0; cell.house=false; cell.temple=false; render(); netBroadcastState(); return; }
   if(TOOL_TIER[selected] > currentTier){ toast('尚未解锁该工具','warn'); return; }
   if(selected==='house'){
-    if(cell.house){ cell.house=false; render(); refreshHUD(); return; }
+    if(cell.house){ cell.house=false; render(); refreshHUD(); netBroadcastState(); return; }
     if(cell.t==='water'){ toast('房屋不能建在水面上','warn'); sfx('error'); return; }
     if(energy<HOUSE_COST){ toast('能量不足！','danger'); sfx('error'); return; }
     energy-=HOUSE_COST; if(cell.t==='void')cell.t='plain'; cell.l=0; cell.house=true; cell.temple=false;
-    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#ffd166',8); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); return;
+    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#ffd166',8); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); netBroadcastState(); return;
   }
   if(selected==='temple'){
-    if(cell.temple){ cell.temple=false; render(); refreshHUD(); return; }
+    if(cell.temple){ cell.temple=false; render(); refreshHUD(); netBroadcastState(); return; }
     if(cell.t==='water'){ toast('圣殿不能建在水面上','warn'); sfx('error'); return; }
     if(energy<TEMPLE_COST){ toast('能量不足！','danger'); sfx('error'); return; }
     energy-=TEMPLE_COST; if(cell.t==='void')cell.t='plain'; cell.l=0; cell.temple=true; cell.house=false;
-    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#5b8cff',10); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); return;
+    spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,'#5b8cff',10); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); netBroadcastState(); return;
   }
   const t=TERRAIN[selected];
   if(cell.t===selected) return;
   if(energy<t.cost){ toast('能量不足！','danger'); sfx('error'); return; }
   energy-=t.cost; cell.t=selected; cell.l=0; cell.house=false; cell.temple=false;
-  spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,t.color,6); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial();
+  spawnBurst((x+0.5)*TILE,(y+0.5)*TILE,t.color,6); sfx('place'); render(); refreshHUD(); checkObjectives(); checkTutorial(); netBroadcastState();
 }
 function recruit(){
+  if(online && !isHost){ netSend({t:'act', a:{k:'recruit'}}); return; }
   const mp=maxPop();
   if(currentTier<2){ toast('第3时代解锁村民','warn'); return; }
   if(mp===0){ toast('先建造房屋','warn'); sfx('error'); return; }
   if(pop>=mp){ toast('已达人口上限','warn'); sfx('error'); return; }
   if(energy<VILLAGER_COST){ toast('能量不足！','danger'); sfx('error'); return; }
   energy-=VILLAGER_COST; pop++;
-  addLog(`👨‍🌾 招募了一名村民 (${pop}/${mp})`,'good'); sfx('recruit'); refreshHUD(); checkObjectives(); checkTutorial();
+  addLog(`👨‍🌾 招募了一名村民 (${pop}/${mp})`,'good'); sfx('recruit'); refreshHUD(); checkObjectives(); checkTutorial(); netBroadcastState();
 }
 function soothe(){
+  if(online && !isHost){ netSend({t:'act', a:{k:'soothe'}}); return; }
   if(energy<30){ toast('能量不足，无法安抚。','danger'); sfx('error'); return; }
   energy-=30; stability=Math.min(100,stability+12);
-  addLog('🕊 安抚星球：稳定度 +12','good'); refreshHUD();
+  addLog('🕊 安抚星球：稳定度 +12','good'); refreshHUD(); netBroadcastState();
 }
 
 // ---------- end ----------
@@ -651,6 +682,7 @@ function gameOver(win){
   document.getElementById('overDust').textContent = `✨ 获得星尘 +${dust}（当前 ${meta.dust}）`;
   renderShop(); show('overOverlay');
   if(win) sfx('win');
+  if(online && isHost) netSend({t:'over', win:win});
 }
 function renderShop(){
   const box=document.getElementById('shop'); box.innerHTML='';
@@ -777,10 +809,10 @@ function refreshHUD(){
     document.getElementById('warning').style.display='flex';
   } else { document.getElementById('warning').style.display='none'; }
 }
-function addLog(msg,kind){ const l=document.getElementById('log'); const d=document.createElement('div'); d.innerHTML=`<span class="t">${tick}</span><span class="${kind||''}">${msg}</span>`; l.appendChild(d); while(l.children.length>40)l.removeChild(l.firstChild); l.scrollTop=l.scrollHeight; }
+function addLog(msg,kind){ const l=document.getElementById('log'); const d=document.createElement('div'); d.innerHTML=`<span class="t">${tick}</span><span class="${kind||''}">${msg}</span>`; l.appendChild(d); while(l.children.length>40)l.removeChild(l.firstChild); l.scrollTop=l.scrollHeight; if(online&&isHost) netSend({t:'log', msg, kind}); }
 function clearLog(){ document.getElementById('log').innerHTML=''; }
 let toastTimer;
-function toast(msg,kind){ const el=document.getElementById('toast'); el.textContent=msg; el.style.background=kind==='danger'?'rgba(255,98,72,.96)':kind==='warn'?'rgba(255,209,102,.96)':'rgba(38,208,124,.96)'; el.style.color=kind==='warn'?'#201500':'#fff'; el.style.opacity=1; clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.style.opacity=0,1800); }
+function toast(msg,kind){ const el=document.getElementById('toast'); el.textContent=msg; el.style.background=kind==='danger'?'rgba(255,98,72,.96)':kind==='warn'?'rgba(255,209,102,.96)':'rgba(38,208,124,.96)'; el.style.color=kind==='warn'?'#201500':'#fff'; el.style.opacity=1; clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.style.opacity=0,1800); if(online&&isHost) netSend({t:'toast', msg, kind}); }
 function updateRunButtons(){ document.getElementById('btnToggle').textContent=running?'⏸ 暂停':'▶ 继续'; document.getElementById('btnSpeed').textContent='⏩ x'+speed; }
 
 // ---------- audio ----------
@@ -850,13 +882,125 @@ function buildHelp(){
     <b>稳定度：</b>随时间缓慢下降，「安抚星球」回复 +12。`;
 }
 
+// ---------- networking ----------
+const T_IDX={void:0,water:1,plain:2,forest:3,mountain:4};
+const T_NAME=['void','water','plain','forest','mountain'];
+let peer=null, conn=null, guestConn=null, netLeaving=false;
+let online=false, isHost=false, isGuest=false, roomCode='';
+
+function netStatus(msg){ document.getElementById('mpStatus').textContent=msg; }
+function netShow(id,on){ document.getElementById(id).classList.toggle('hidden', !on); }
+function setMPUI(){
+  document.getElementById('mpBadge').classList.toggle('hidden', !online);
+  document.getElementById('btnLeave').classList.toggle('hidden', !online);
+  const guest=online && !isHost;
+  ['btnToggle','btnSpeed','btnAgain'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=guest; });
+  const restartEl=document.getElementById('btnRestart'); if(restartEl) restartEl.disabled = online;
+}
+function netResetLobby(){
+  netShow('mpJoinRow',false); netShow('mpCreateRow',true); netShow('mpStartRow',false);
+  document.getElementById('mpCode').value=''; netStatus('');
+}
+function netHost(){
+  isHost=true; isGuest=false; online=false; netStatus('正在创建房间...');
+  try{ peer=new Peer(String(Math.floor(10000+Math.random()*90000))); }catch(e){ netStatus('创建失败'); return; }
+  peer.on('open', id=>{ roomCode=id; netStatus(`房间号：${id}　→ 把这个号码告诉好友`); });
+  peer.on('connection', c=>{
+    if(guestConn){ try{c.close();}catch(e){} return; }
+    guestConn=c;
+    c.on('data', d=>{ let m; try{ m=JSON.parse(d); }catch(e){return;} netOnMsg(m); });
+    c.on('close', ()=>{ if(netLeaving)return; guestConn=null; netDisconnect(); newRun(); show('startOverlay'); toast('好友已离开','warn'); });
+    netStatus('好友已加入！点击「开始游戏」'); netShow('mpStartRow',true);
+  });
+  peer.on('error', err=>{ netStatus('创建失败：'+(err.type||'error')); });
+}
+function netJoin(code){
+  if(!/^\d{5}$/.test(code)){ netStatus('请输入5位数字房间号'); return; }
+  isGuest=true; isHost=false; online=false; netStatus('正在连接 '+code+' ...');
+  try{ peer=new Peer(); }catch(e){ netStatus('连接失败'); return; }
+  peer.on('open', ()=>{
+    conn=peer.connect(code, {reliable:true});
+    conn.on('open', ()=>{ netStatus('已连接，等待房主开始...'); });
+    conn.on('data', d=>{ let m; try{ m=JSON.parse(d); }catch(e){return;} netOnMsg(m); });
+    conn.on('close', ()=>{ if(netLeaving)return; netDisconnect(); newRun(); show('startOverlay'); toast('房主已离开','warn'); });
+  });
+  peer.on('error', err=>{ netStatus('加入失败：'+(err.type||'error')); });
+}
+function netSend(o){
+  if(isHost){ if(guestConn && guestConn.open) guestConn.send(JSON.stringify(o)); }
+  else { if(conn && conn.open) conn.send(JSON.stringify(o)); }
+}
+function netOnMsg(m){
+  if(m.t==='act'){ if(isHost) netApplyAction(m.a); return; }
+  if(m.t==='state'){ applyRemoteState(m); return; }
+  if(m.t==='start'){ netOnStart(); return; }
+  if(m.t==='log'){ addLog(m.msg, m.kind); return; }
+  if(m.t==='toast'){ toast(m.msg, m.kind); return; }
+  if(m.t==='over'){ gameOver(m.win); return; }
+  if(m.t==='restart'){ hide('overOverlay'); hide('eventOverlay'); hide('blessOverlay'); running=true; updateRunButtons(); return; }
+}
+function netApplyAction(a){
+  if(!a) return;
+  if(a.k==='place'){ const p=selected; selected=a.tool||'void'; place(a.x,a.y); selected=p; }
+  else if(a.k==='recruit') recruit();
+  else if(a.k==='soothe') soothe();
+  else if(a.k==='deflect') deflect();
+  netBroadcastState();
+}
+function netOnStart(){
+  hide('startOverlay'); hide('mpOverlay');
+  online=true; running=true; updateRunButtons(); setMPUI();
+  toast('已进入联机合作！','good');
+}
+function encGrid(){
+  const g=[];
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){ const c=grid[y][x]; g.push((T_IDX[c.t]??0)+c.l*8+(c.house?64:0)+(c.temple?128:0)); }
+  return g;
+}
+function decGrid(g){
+  for(let i=0;i<SIZE*SIZE;i++){ const v=g[i]||0; const y=Math.floor(i/SIZE), x=i%SIZE; grid[y][x]={ t:T_NAME[v&7]||'void', l:(v>>3)&7, house:!!(v&64), temple:!!(v&128) }; }
+}
+function netBroadcastState(){
+  if(!online || !isHost) return;
+  netSend({ t:'state', grid:encGrid(), energy:Math.floor(energy), stability:Math.round(stability), score, tick, pop, currentTier, objIndex, blessings, pending:(pending?{x:pending.x,y:pending.y,d:{name:pending.d.name}}:null), disasterAt });
+}
+function applyRemoteState(s){
+  if(s.grid) decGrid(s.grid);
+  const tierChanged = s.currentTier !== currentTier;
+  const blessChanged = JSON.stringify(s.blessings||{}) !== JSON.stringify(blessings);
+  energy=s.energy; stability=s.stability; score=s.score; tick=s.tick; pop=s.pop;
+  currentTier=s.currentTier; objIndex=s.objIndex; blessings=s.blessings||{};
+  pending=s.pending; disasterAt=s.disasterAt||0;
+  if(tierChanged) buildPalette();
+  if(tierChanged || blessChanged) buildLegend();
+  refreshHUD(); render();
+}
+function netDisconnect(){
+  netLeaving=true;
+  try{ if(peer) peer.destroy(); }catch(e){}
+  peer=null; conn=null; guestConn=null;
+  online=false; isHost=false; isGuest=false; roomCode='';
+  setMPUI();
+  setTimeout(()=>netLeaving=false,0);
+}
+function netLeave(){
+  netDisconnect(); newRun(); show('startOverlay');
+}
+function netMPStart(){
+  if(!isHost || !guestConn) return;
+  hide('mpOverlay'); hide('startOverlay');
+  online=true; running=true; updateRunButtons(); setMPUI();
+  netSend({t:'start'}); netBroadcastState();
+  toast('联机开始！','good');
+}
+
 // ---------- loop ----------
 let last=0, acc=0;
 function loop(ts){
   requestAnimationFrame(loop);
   if(!last)last=ts; const dt=ts-last; last=ts;
   updateFX(dt/1000);
-  if(running && speed>0){ acc+=dt; const interval=1000/speed; while(running && acc>=interval){ acc-=interval; tickOnce(); } }
+  if(running && speed>0 && (!online || isHost)){ acc+=dt; const interval=1000/speed; while(running && acc>=interval){ acc-=interval; tickOnce(); } }
   render();
 }
 
@@ -868,11 +1012,18 @@ document.getElementById('btnSoothe').onclick=soothe;
 document.getElementById('btnRecruit').onclick=recruit;
 document.getElementById('btnDeflect').onclick=deflect;
 document.getElementById('btnRestart').onclick=()=>{ hide('overOverlay'); hide('eventOverlay'); newRun(); show('startOverlay'); };
-document.getElementById('btnAgain').onclick=()=>{ hide('overOverlay'); newRun(); show('startOverlay'); };
+document.getElementById('btnAgain').onclick=()=>{ hide('overOverlay'); newRun(); if(online && isHost){ running=true; updateRunButtons(); netSend({t:'restart'}); netBroadcastState(); } else { show('startOverlay'); } };
 document.getElementById('btnHelp').onclick=()=>show('helpOverlay');
 document.getElementById('helpClose').onclick=()=>hide('helpOverlay');
 document.getElementById('btnTutorial').onclick=()=>startTutorial();
 document.getElementById('btnSkipTut').onclick=()=>endTutorial();
+document.getElementById('btnMP').onclick=()=>{ show('mpOverlay'); hide('startOverlay'); netResetLobby(); };
+document.getElementById('btnHost').onclick=netHost;
+document.getElementById('btnShowJoin').onclick=()=>{ netShow('mpJoinRow',true); netShow('mpCreateRow',false); };
+document.getElementById('btnJoin').onclick=()=>netJoin(document.getElementById('mpCode').value.trim());
+document.getElementById('btnMPStart').onclick=netMPStart;
+document.getElementById('btnMPBack').onclick=()=>{ netDisconnect(); hide('mpOverlay'); show('startOverlay'); netResetLobby(); };
+document.getElementById('btnLeave').onclick=netLeave;
 document.getElementById('btnSound').onclick=(e)=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔊':'🔇'; };
 
 // ---------- boot ----------
