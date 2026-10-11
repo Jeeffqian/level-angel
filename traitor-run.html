@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陷阱跑酷 · Trap Run 3D</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e14; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+canvas { display: block; }
+button { font-family: inherit; cursor: pointer; }
+
+.screen { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #fff; }
+.screen.hidden { display: none; }
+.panel { background: rgba(10,14,22,0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px 34px; display: flex; flex-direction: column; gap: 12px; min-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.panel h1 { font-size: 26px; text-align: center; letter-spacing: 2px; background: linear-gradient(90deg,#ff5d5d,#ffd166,#7ce88c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.panel .sub { text-align: center; color: #8a94a3; font-size: 13px; }
+input { padding: 10px 14px; border-radius: 9px; border: 1px solid #2a3442; background: #121826; color: #fff; font-size: 14px; outline: none; letter-spacing: 1px; }
+input:focus { border-color: #ffd166; }
+.btn { padding: 12px 18px; border-radius: 10px; border: none; font-size: 15px; letter-spacing: 2px; color: #fff; transition: transform .1s, filter .1s; }
+.btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.btn.primary { background: #2f6bff; }
+.btn.green { background: #23a55a; }
+.btn.danger { background: #d03a3a; }
+.btn.ghost { background: #232b3a; }
+.btn.small { padding: 8px 14px; font-size: 13px; }
+.row { display: flex; gap: 10px; }
+.row.center { justify-content: center; }
+.status { color: #ffd166; font-size: 13px; min-height: 18px; text-align: center; }
+#lobbyList { list-style: none; }
+#lobbyList li { padding: 7px 10px; background: #141b2a; border-radius: 8px; margin-bottom: 6px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+#hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+#topbar { position: absolute; top: 14px; left: 14px; display: flex; flex-direction: column; gap: 7px; }
+.chip { background: rgba(0,0,0,0.55); color: #fff; padding: 6px 13px; border-radius: 10px; font-size: 13px; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.08); }
+.chip b { font-variant-numeric: tabular-nums; }
+#timerChip { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold; color: #ffd166; }
+
+#players { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 14px; }
+#players .head { font-size: 12px; color: #8a94a3; margin-bottom: 7px; letter-spacing: 1px; }
+#players .p { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 2; }
+#players .p .name { min-width: 60px; }
+#players .p .hp { color: #ff6b6b; font-size: 12px; }
+#players .p.dead { opacity: 0.35; text-decoration: line-through; }
+#players .p.finished .name::after { content: " ✓"; color: #7ce88c; }
+
+#speedlines { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.15s; background: radial-gradient(ellipse at center, transparent 52%, rgba(120,160,255,0.18) 62%, transparent 72%); }
+#speedlines::after { content: ""; position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(150,190,255,0.12) 0deg 1.5deg, transparent 1.5deg 6deg); mask: radial-gradient(ellipse at center, transparent 45%, #000 75%); -webkit-mask: radial-gradient(ellipse at center, transparent 45%, #000 75%); }
+#msg { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: bold; letter-spacing: 3px; color: #fff; text-shadow: 0 0 20px rgba(0,0,0,0.8); }
+#msg.hidden { display: none; }
+
+#minimap { position: absolute; bottom: 18px; left: 18px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; background: rgba(0,0,0,0.5); }
+#hint { position: absolute; right: 14px; bottom: 14px; color: #8a94a3; font-size: 12px; line-height: 1.9; text-align: right; background: rgba(0,0,0,0.45); padding: 9px 13px; border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div id="menuScreen" class="screen">
+  <div class="panel">
+    <h1>陷阱跑酷</h1>
+    <div class="sub">3D 跑酷 · 躲避自动机关，率先冲线</div>
+    <input id="nameInput" maxlength="8" placeholder="你的名字" />
+    <button class="btn primary" id="soloBtn">单机试玩（带机器人）</button>
+    <button class="btn green" id="createBtn">创建房间</button>
+    <div class="row">
+      <input id="codeInput" maxlength="5" placeholder="房间码 5 位" style="flex:1;" />
+      <button class="btn ghost" id="joinBtn">加入房间</button>
+    </div>
+    <div class="status" id="menuStatus"></div>
+  </div>
+</div>
+
+<div id="lobbyScreen" class="screen hidden">
+  <div class="panel">
+    <h1>等待玩家</h1>
+    <ul id="lobbyList"></ul>
+    <div class="status" id="lobbyStatus"></div>
+    <div class="row center">
+      <button class="btn green" id="startBtn">开始游戏</button>
+      <button class="btn ghost" id="leaveBtn">离开</button>
+    </div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div class="chip" id="stateChip">准备中...</div>
+  </div>
+  <div class="chip" id="timerChip">180</div>
+  <div id="players"><div class="head">玩家</div></div>
+  <canvas id="minimap" width="200" height="90"></canvas>
+  <div id="speedlines"></div>
+  <div id="msg" class="hidden"></div>
+  <div id="hint">WASD 移动 · 空格跳跃（可二段跳）· Shift 冲刺 · 鼠标转向<br>吃金币加分，躲避机关冲线</div>
+</div>
+
+<script src="three.min.js"></script>
+<script src="peerjs.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+// ===================== 常量与数据 =====================
+var COURSE_HALF = 5.5;
+var GRAVITY = -26;
+var MOVE_SPEED = 6.5;
+var JUMP_VEL = 9.4;
+var FINISH_Z = 96;
+var ROUND_TIME = 180;
+var MAX_HP = 3;
+var STATE_TICK = 50; // ms
+
+var COLORS = ['#ff5d5d', '#5db9ff', '#7ce88c', '#ffd166'];
+var TRAP_DEFS = [
+  { id: 0, type: 'spike',    name: '尖刺', z0: 18, z1: 20, activeT: 3.0, cd: 7.0, icon: '▲' },
+  { id: 1, type: 'collapse', name: '塌陷', z0: 44, z1: 46, activeT: 3.2, cd: 7.0, icon: '▽' },
+  { id: 2, type: 'laser',    name: '激光', z0: 51.5, z1: 52.5, activeT: 2.4, cd: 6.0, icon: '☰' },
+  { id: 3, type: 'hammer',   name: '摆锤', z0: 60, z1: 62, activeT: 2.8, cd: 6.0, icon: '⏳' },
+  { id: 4, type: 'spike',    name: '尖刺', z0: 70, z1: 72, activeT: 3.0, cd: 7.0, icon: '▲' },
+  { id: 5, type: 'collapse', name: '塌陷', z0: 81, z1: 83, activeT: 3.2, cd: 7.0, icon: '▽' },
+  { id: 6, type: 'fire',     name: '地火', z0: 87, z1: 89, activeT: 2.6, cd: 6.0, icon: '🔥' }
+];
+
+// 实心地板区间（y=高度，cx=中心 x；分叉处用两条窄道）
+var SOLID_SEGS = [
+  { z0: 0,  z1: 10, w: 5.5, y: 0,   cx: 0 },
+  { z0: 14, z1: 20, w: 5.5, y: 0,   cx: 0 },
+  { z0: 23, z1: 28, w: 5.5, y: 0,   cx: 0 },
+  { z0: 31, z1: 36, w: 5.5, y: 0,   cx: 0 },
+  { z0: 40, z1: 46, w: 5.5, y: 1.2, cx: 0 },
+  { z0: 50, z1: 56, w: 2.0, y: 0,   cx: -2.8 },
+  { z0: 50, z1: 56, w: 2.0, y: 0,   cx: 2.8 },
+  { z0: 59, z1: 64, w: 5.5, y: 0,   cx: 0 },
+  { z0: 68, z1: 74, w: 2.6, y: 0,   cx: 0 },
+  { z0: 77, z1: 84, w: 5.5, y: 0,   cx: 0 },
+  { z0: 87, z1: 100, w: 5.5, y: 0,  cx: 0 }
+];
+
+var SAWS = [
+  { z: 33, amp: 4.5, speed: 1.7, phase: 0 },
+  { z: 79, amp: 4.2, speed: 2.2, phase: 2.1 },
+  { z: 90, amp: 4.5, speed: 2.6, phase: 4.2 }
+];
+
+// 移动平台（沿 X 往返，跨过缺口）
+var PLATFORMS = [
+  { z: 29.5, pw: 1.6, pd: 1.6, centerX: 0, ampX: 3.8, speed: 1.4, phase: 0, topY: 0.5 }
+];
+
+// 从天而降的落石
+var FALLERS = [
+  { z: 24, period: 5.5, phase: 3 },
+  { z: 63, period: 4.5, phase: 5 },
+  { z: 94, period: 4.0, phase: 2 }
+];
+
+var CHECKPOINTS = [10, 28, 40, 46, 64, 77, 87];
+
+// ===================== 全局状态 =====================
+var isHost = true;
+var phase = 'menu'; // menu | lobby | playing | end
+var myId = 1;
+var myName = '';
+var players = [];      // 权威玩家数组（host 模拟 / client 渲染）
+var traps = [];
+var gameTime = 0;
+var roundTimer = ROUND_TIME;
+var finishedOrder = [];   // 冲线顺序
+var gameOver = false;
+
+// 本地存档
+var save = { bestScore: 0, bestTime: Infinity };
+try { var _s = JSON.parse(localStorage.getItem('traprun') || '{}'); if (_s.bestScore) save.bestScore = _s.bestScore; if (_s.bestTime) save.bestTime = _s.bestTime; } catch (e) {}
+
+// 输入
+var keys = { f: 0, b: 0, l: 0, r: 0, jump: false, dash: 0 };
+var yaw = 0, pitch = -0.18;
+
+// ===================== Three.js 场景 =====================
+var scene, camera, renderer;
+var playerGroups = [];
+var trapMeshes = [];
+var sawMeshes = [];
+var floorTiles = [];
+var coins = [];
+var platformMeshes = [];
+var fallerMeshes = [];
+var trailDots = [];
+var trailAcc = 0;
+var finishMesh, labelSprites = [];
+var tick = 0;
+
+// ===================== 音效（WebAudio 合成） =====================
+var audioCtx = null;
+function sfx(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    var t = audioCtx.currentTime;
+    if (type === 'jump') {
+      o.type = 'square'; o.frequency.setValueAtTime(240, t); o.frequency.exponentialRampToValueAtTime(500, t + 0.12);
+      g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.start(t); o.stop(t + 0.16);
+    } else if (type === 'doublejump') {
+      o.type = 'square'; o.frequency.setValueAtTime(380, t); o.frequency.exponentialRampToValueAtTime(760, t + 0.12);
+      g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.start(t); o.stop(t + 0.16);
+    } else if (type === 'coin') {
+      o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(1320, t + 0.08);
+      g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      o.start(t); o.stop(t + 0.22);
+    } else if (type === 'hurt') {
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.25);
+      g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.start(t); o.stop(t + 0.3);
+    }
+  } catch (e) {}
+}
+
+function initThree() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x10151f);
+  scene.fog = new THREE.Fog(0x10151f, 20, 90);
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 300);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  var amb = new THREE.AmbientLight(0xffffff, 0.55);
+  scene.add(amb);
+  var dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(12, 22, 8);
+  scene.add(dir);
+  var fill = new THREE.DirectionalLight(0x8899ff, 0.3);
+  fill.position.set(-8, 8, -6);
+  scene.add(fill);
+
+  buildCourse();
+  buildTraps();
+  buildSaws();
+  buildCoins();
+  buildPlatforms();
+  buildFallers();
+  buildFinish();
+  buildPlayers();
+  buildWalls();
+  initTrapState();
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+function box(w, h, d, color, x, y, z) {
+  var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: color }));
+  m.position.set(x, y, z);
+  scene.add(m);
+  return m;
+}
+
+function buildCourse() {
+  SOLID_SEGS.forEach(function (s) {
+    var cy = s.y || 0;
+    for (var z = s.z0; z < s.z1; z += 2) {
+      var z1 = Math.min(s.z1, z + 2);
+      var len = z1 - z;
+      var m = box(s.w * 2, 0.8, len, 0x2a3550, s.cx || 0, cy - 0.4, (z + z1) / 2);
+      floorTiles.push({ mesh: m, z0: z, z1: z1 });
+    }
+  });
+}
+
+function buildWalls() {
+  var g = new THREE.BoxGeometry(1, 4, 104);
+  var m = new THREE.MeshLambertMaterial({ color: 0x1a2233 });
+  var l = new THREE.Mesh(g, m); l.position.set(-COURSE_HALF - 1.5, 1.5, 50); scene.add(l);
+  var r = new THREE.Mesh(g, m); r.position.set(COURSE_HALF + 1.5, 1.5, 50); scene.add(r);
+}
+
+function buildFinish() {
+  var g = new THREE.BoxGeometry(0.4, 4, 0.4);
+  var mat = new THREE.MeshBasicMaterial({ color: 0x7ce88c });
+  var l = new THREE.Mesh(g, mat); l.position.set(-COURSE_HALF, 2, FINISH_Z); scene.add(l);
+  var r = new THREE.Mesh(g, mat); r.position.set(COURSE_HALF, 2, FINISH_Z); scene.add(r);
+  var top = new THREE.Mesh(new THREE.BoxGeometry(COURSE_HALF * 2, 0.4, 0.4), mat);
+  top.position.set(0, 4, FINISH_Z); scene.add(top);
+  finishMesh = top;
+}
+
+function buildPlayers() {
+  for (var i = 0; i < 4; i++) {
+    var g = new THREE.Group();
+    var body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.9, 0.4), new THREE.MeshLambertMaterial({ color: new THREE.Color(COLORS[i]) }));
+    body.position.y = 0.45;
+    g.add(body);
+    var head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({ color: 0xf0d8b0 }));
+    head.position.y = 1.25;
+    g.add(head);
+    var visor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.06), new THREE.MeshBasicMaterial({ color: 0x0b0e14 }));
+    visor.position.set(0, 1.28, -0.26);
+    g.add(visor);
+    var label = makeLabel('');
+    label.position.y = 2.05;
+    g.add(label);
+    labelSprites.push(label);
+    g.visible = false;
+    scene.add(g);
+    playerGroups.push(g);
+  }
+}
+
+function makeLabel(text) {
+  var c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  var ctx = c.getContext('2d');
+  ctx.font = 'bold 34px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, 256, 64);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(text, 128, 32);
+  var tex = new THREE.CanvasTexture(c);
+  var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sp.scale.set(1.8, 0.45, 1);
+  sp.userData = { canvas: c, ctx: ctx, tex: tex };
+  return sp;
+}
+
+function buildSaws() {
+  SAWS.forEach(function (s) {
+    var g = new THREE.Group();
+    var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.35, 16), new THREE.MeshLambertMaterial({ color: 0xff6b6b }));
+    disc.rotation.x = Math.PI / 2;
+    g.add(disc);
+    var hub = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), new THREE.MeshLambertMaterial({ color: 0x8899aa }));
+    g.add(hub);
+    g.position.set(0, 0.75, s.z);
+    scene.add(g);
+    sawMeshes.push({ group: g, def: s, x: 0 });
+  });
+}
+
+function buildCoins() {
+  var geo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 14);
+  var mat = new THREE.MeshLambertMaterial({ color: 0xffd166, emissive: 0x553300 });
+  SOLID_SEGS.forEach(function (s) {
+    var cx = s.cx || 0, cy = (s.y || 0) + 1.1;
+    for (var z = s.z0 + 1; z < s.z1 - 1; z += 2.4) {
+      var x = cx + Math.sin(z * 0.9) * Math.min(2.2, s.w - 0.5);
+      addCoin(x, cy, z, geo, mat);
+    }
+  });
+  // 缺口上的金币弧线
+  for (var gz = 0; gz < FINISH_Z; gz++) {
+    var solidHere = false;
+    for (var i = 0; i < SOLID_SEGS.length; i++) if (gz >= SOLID_SEGS[i].z0 && gz <= SOLID_SEGS[i].z1) solidHere = true;
+    if (solidHere) continue;
+    addCoin(0, 1.7, gz + 0.5, geo, mat);
+  }
+}
+
+function addCoin(x, y, z, geo, mat) {
+  var m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  scene.add(m);
+  coins.push({ x: x, y: y, z: z, mesh: m, taken: false, spin: Math.random() * Math.PI * 2 });
+}
+
+function buildPlatforms() {
+  PLATFORMS.forEach(function (p) {
+    var g = new THREE.Group();
+    var base = new THREE.Mesh(new THREE.BoxGeometry(p.pw * 2, 0.4, p.pd * 2), new THREE.MeshLambertMaterial({ color: 0x6b5a3a }));
+    base.position.y = 0.3;
+    g.add(base);
+    var top = new THREE.Mesh(new THREE.BoxGeometry(p.pw * 2, 0.12, p.pd * 2), new THREE.MeshBasicMaterial({ color: 0x88ccff }));
+    top.position.y = 0.5;
+    g.add(top);
+    g.position.set(p.centerX, 0, p.z);
+    scene.add(g);
+    platformMeshes.push({ group: g, def: p, x: p.centerX, prevX: p.centerX });
+  });
+}
+
+function buildFallers() {
+  FALLERS.forEach(function (f) {
+    var warn = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.05, 3.2), new THREE.MeshBasicMaterial({ color: 0xff5d5d, transparent: true, opacity: 0.4 }));
+    warn.position.set(0, 0.03, f.z);
+    scene.add(warn);
+    var g = new THREE.Group();
+    var block = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 3.2), new THREE.MeshLambertMaterial({ color: 0x8899aa }));
+    block.position.y = 0.8;
+    g.add(block);
+    g.position.set(0, 6, f.z);
+    scene.add(g);
+    fallerMeshes.push({ group: g, def: f, y: 6 });
+  });
+}
+
+function initTrapState() {
+  traps = TRAP_DEFS.map(function (t, i) {
+    return {
+      def: t, state: 'ready', timer: 0, anim: 0,
+      effect: trapMeshes[i].effect, _mesh: trapMeshes[i],
+      autoDelay: 2 + i * 1.4 + Math.random() * 2,   // 错开自动触发
+      period: 5 + Math.random() * 4
+    };
+  });
+}
+
+function buildTraps() {
+  TRAP_DEFS.forEach(function (t) {
+    var cz = (t.z0 + t.z1) / 2;
+    var w = t.z1 - t.z0;
+    var group = new THREE.Group();
+    group.position.set(0, 0, cz);
+    var base = new THREE.Mesh(new THREE.BoxGeometry(COURSE_HALF * 2, 0.12, w), new THREE.MeshLambertMaterial({ color: 0x3a2a2a }));
+    base.position.y = 0.06;
+    group.add(base);
+    var mark = new THREE.Mesh(new THREE.BoxGeometry(COURSE_HALF * 2, 0.05, w), new THREE.MeshBasicMaterial({ color: 0xff5d5d, transparent: true, opacity: 0.4 }));
+    mark.position.y = 0.09;
+    group.add(mark);
+
+    var effect = new THREE.Group();
+    group.add(effect);
+
+    if (t.type === 'spike') {
+      for (var i = 0; i < 7; i++) {
+        var spike = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 6), new THREE.MeshLambertMaterial({ color: 0xcccccc }));
+        spike.position.set(-COURSE_HALF + 1 + i * 1.6, 0, 0);
+        spike.visible = false;
+        effect.add(spike);
+      }
+    } else if (t.type === 'laser') {
+      var beam = new THREE.Mesh(new THREE.BoxGeometry(COURSE_HALF * 2, 0.5, 0.35), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.7 }));
+      beam.position.y = 0.7;
+      effect.add(beam);
+    } else if (t.type === 'hammer') {
+      var hg = new THREE.Group();
+      hg.position.y = 1.0;
+      var bar = new THREE.Mesh(new THREE.BoxGeometry(COURSE_HALF * 2, 0.35, 0.35), new THREE.MeshLambertMaterial({ color: 0xff6b6b }));
+      hg.add(bar);
+      var ball = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), new THREE.MeshLambertMaterial({ color: 0xff3b3b }));
+      ball.position.set(COURSE_HALF, 0, 0);
+      hg.add(ball);
+      effect.add(hg);
+      effect.userData.hammer = { group: hg, angle: 0 };
+    } else if (t.type === 'collapse') {
+      mark.material.color.set(0xffd166);
+      mark.material.opacity = 0.5;
+    } else if (t.type === 'fire') {
+      mark.material.color.set(0xff7b2a);
+      for (var i = 0; i < 8; i++) {
+        var flame = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.4, 7), new THREE.MeshBasicMaterial({ color: 0xff5a1f, transparent: true, opacity: 0.85 }));
+        flame.position.set(-COURSE_HALF + 0.7 + i * 1.5, 1.2, 0);
+        flame.visible = false;
+        effect.add(flame);
+      }
+    }
+
+    scene.add(group);
+    trapMeshes.push({ def: t, group: group, effect: effect, state: 'ready', timer: 0, anim: 0 });
+  });
+}
+
+// ===================== 关卡几何 =====================
+function groundYAt(x, z) {
+  for (var i = 0; i < SOLID_SEGS.length; i++) {
+    var s = SOLID_SEGS[i];
+    if (z < s.z0 || z > s.z1) continue;
+    if (Math.abs(x - (s.cx || 0)) > s.w) continue;
+    var collapsed = false;
+    for (var j = 0; j < traps.length; j++) {
+      var t = traps[j];
+      if (t.def.type === 'collapse' && t.state === 'active' && z >= t.def.z0 && z <= t.def.z1) { collapsed = true; break; }
+    }
+    if (collapsed) continue;
+    return s.y || 0;
+  }
+  return -Infinity;
+}
+
+function courseSolid(x, z) {
+  return groundYAt(x, z) !== -Infinity;
+}
+
+// 把横向目标夹在当前地板范围内，避免 AI 走出窄道
+function clampTx(p, tx) {
+  for (var i = 0; i < SOLID_SEGS.length; i++) {
+    var s = SOLID_SEGS[i];
+    if (p.z < s.z0 || p.z > s.z1) continue;
+    var cx = s.cx || 0;
+    if (Math.abs(p.x - cx) > s.w + 1.5) continue;
+    var lim = s.w - 0.4;
+    return Math.max(cx - lim, Math.min(cx + lim, tx));
+  }
+  return tx;
+}
+
+function barDangerous(angle) {
+  var a = ((angle % (Math.PI)) + Math.PI) % Math.PI;
+  return a < Math.PI * 0.25 || a > Math.PI * 0.75;
+}
+
+function platformX(def, t) { return def.centerX + def.ampX * Math.sin(t * def.speed + def.phase); }
+
+function fallerY(def, t) {
+  var cyc = (((t + def.phase) % def.period) + def.period) % def.period / def.period;
+  if (cyc < 0.35) return 6 - 6 * (cyc / 0.35);
+  if (cyc < 0.5) return 0;
+  if (cyc < 0.85) return 6 * ((cyc - 0.5) / 0.35);
+  return 6;
+}
+
+// ===================== 玩家 =====================
+function makePlayer(id, name, color, isBot) {
+  return {
+    id: id, name: name, color: color, isBot: !!isBot,
+    x: 0, y: 0, z: 3 - (id - 1) * 1.4,
+    vx: 0, vy: 0, vz: 0, yaw: 0,
+    hp: MAX_HP, invuln: 0, slowT: 0,
+    grounded: true, finished: false, eliminated: false,
+    respawnZ: 0,
+    canDoubleJump: true, dashT: 0, score: 0, prevJump: false, coyoteT: 0, jumpBufferT: 0,
+    input: { f: 0, b: 0, l: 0, r: 0, jump: false, dash: false },
+    aiJump: false, aiThink: 0,
+    aiLane: Math.round(Math.random() * 4 - 2),        // 横向偏好 -2..2
+    aiSpeed: 0.92 + Math.random() * 0.18,             // 速度差异 0.92..1.10
+    aiWobble: Math.random() * Math.PI * 2             // 摆动相位
+  };
+}
+
+function alivePlayers() { return players.filter(function (p) { return !p.eliminated && !p.finished; }); }
+
+// ===================== 物理（host 权威） =====================
+function updatePlayer(p, dt) {
+  if (p.eliminated || p.finished) return;
+
+  var inSlow = false;
+  for (var i = 0; i < traps.length; i++) {
+    var t = traps[i];
+    if (t.def.type === 'slow' && t.state === 'active' && p.z >= t.def.z0 && p.z <= t.def.z1) inSlow = true;
+  }
+  if (p.slowT > 0) { p.slowT -= dt; inSlow = true; }
+  var sprint = (p.input.dash && !p.isBot) ? 1.55 : 1;
+  var speed = MOVE_SPEED * (inSlow ? 0.45 : 1) * (p.aiSpeed || 1) * sprint;
+
+  var fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+  var rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+  var f = (p.input.f || 0) - (p.input.b || 0);
+  var s = (p.input.r || 0) - (p.input.l || 0);
+  var dx = fx * f + rx * s;
+  var dz = fz * f + rz * s;
+  var len = Math.sqrt(dx * dx + dz * dz);
+  if (len > 0.001) { dx /= len; dz /= len; }
+
+  var targetVx = dx * speed;
+  var targetVz = dz * speed;
+  var accel = p.grounded ? 1 : 0.55;
+  p.vx += (targetVx - p.vx) * Math.min(1, accel * 14 * dt);
+  p.vz += (targetVz - p.vz) * Math.min(1, accel * 14 * dt);
+
+  // 跳跃 + 二段跳（含土狼时间与跳跃缓冲）
+  if (p.coyoteT > 0) p.coyoteT -= dt;
+  if (p.jumpBufferT > 0) p.jumpBufferT -= dt;
+  var jumpPressed = p.input.jump && !p.prevJump;
+  p.prevJump = p.input.jump;
+  if (jumpPressed) p.jumpBufferT = 0.12;
+  if (p.jumpBufferT > 0) {
+    if (p.grounded || p.coyoteT > 0) {
+      p.vy = JUMP_VEL; p.grounded = false; p.coyoteT = 0; p.jumpBufferT = 0;
+      if (p.id === myId) sfx('jump');
+    } else if (p.canDoubleJump) {
+      p.vy = JUMP_VEL * 0.92; p.canDoubleJump = false; p.jumpBufferT = 0;
+      if (p.id === myId) sfx('doublejump');
+    }
+  }
+
+  // 重力
+  p.vy += GRAVITY * dt;
+
+  // 移动
+  p.x += p.vx * dt;
+  p.z += p.vz * dt;
+  p.y += p.vy * dt;
+
+  // 边界
+  if (p.x > COURSE_HALF - 0.3) { p.x = COURSE_HALF - 0.3; p.vx = Math.min(0, p.vx); }
+  if (p.x < -COURSE_HALF + 0.3) { p.x = -COURSE_HALF + 0.3; p.vx = Math.max(0, p.vx); }
+  if (p.z < 0) p.z = 0;
+
+  // 地面碰撞（含移动平台）
+  var gy = groundYAt(p.x, p.z), onPlat = false, platDx = 0;
+  for (var m = 0; m < PLATFORMS.length; m++) {
+    var pd = PLATFORMS[m];
+    var px = platformX(pd, gameTime);
+    if (Math.abs(p.z - pd.z) <= pd.pd && Math.abs(p.x - px) <= pd.pw + 0.2 && p.y <= pd.topY + 0.08) {
+      if (pd.topY >= gy) {
+        gy = pd.topY;
+        onPlat = true;
+        platDx = px - platformX(pd, gameTime - dt);
+      }
+    }
+  }
+  if (p.vy <= 0 && p.y <= gy) {
+    p.y = gy; p.vy = 0; p.grounded = true;
+    p.canDoubleJump = true; p.coyoteT = 0.12;
+    if (onPlat) p.x += platDx;
+  } else if (p.y > gy && p.vy < 0) {
+    p.grounded = false;
+  }
+
+  // 掉落
+  if (p.y < -9) {
+    p.hp--;
+    if (p.hp <= 0) {
+      p.eliminated = true;
+      flashMsg(p.name + ' 摔落出局！', '#ff3b3b');
+      return;
+    }
+    respawnPlayer(p);
+    flashMsg(p.name + ' 摔落！', '#ffd166');
+    return;
+  }
+
+  // 陷阱伤害
+  for (var j = 0; j < traps.length; j++) {
+    var tr = traps[j];
+    if (tr.state !== 'active') continue;
+    if (tr.def.type === 'spike') {
+      if (p.z >= tr.def.z0 && p.z <= tr.def.z1 && p.grounded && groundYAt(p.x, p.z) !== -Infinity) damagePlayer(p);
+    } else if (tr.def.type === 'laser') {
+      if (p.z >= tr.def.z0 && p.z <= tr.def.z1 && p.y < 1.2) damagePlayer(p);
+    } else if (tr.def.type === 'hammer') {
+      if (p.z >= tr.def.z0 - 0.6 && p.z <= tr.def.z1 + 0.6 && p.y < 1.2) {
+        var hm = tr.effect.userData.hammer;
+        if (barDangerous(hm.angle)) damagePlayer(p);
+      }
+    } else if (tr.def.type === 'fire') {
+      if (p.z >= tr.def.z0 && p.z <= tr.def.z1 && p.y < 2.5 && groundYAt(p.x, p.z) !== -Infinity) damagePlayer(p);
+    }
+  }
+
+  // 移动锯片障碍
+  for (var k = 0; k < sawMeshes.length; k++) {
+    var sp = sawMeshes[k];
+    var sx = sp.def.amp * Math.sin(gameTime * sp.def.speed + sp.def.phase);
+    if (Math.abs(p.z - sp.def.z) < 0.9 && p.y < 1.2 && Math.abs(p.x - sx) < 0.9) {
+      damagePlayer(p);
+    }
+  }
+
+  // 落石伤害
+  for (var fl = 0; fl < FALLERS.length; fl++) {
+    var fd = FALLERS[fl];
+    if (fallerY(fd, gameTime) < 0.6 && Math.abs(p.z - fd.z) < 1.8 && Math.abs(p.x) < 1.8 && p.y < 1.6) {
+      damagePlayer(p);
+    }
+  }
+
+  // 金币收集
+  for (var c = 0; c < coins.length; c++) {
+    var co = coins[c];
+    if (co.taken) continue;
+    var ddx = p.x - co.x, ddy = (p.y + 0.8) - co.y, ddz = p.z - co.z;
+    if (ddx * ddx + ddy * ddy + ddz * ddz < 1.1) {
+      co.taken = true;
+      p.score += 10;
+      if (p.id === myId) sfx('coin');
+    }
+  }
+
+  // 减益计时
+  if (p.invuln > 0) p.invuln -= dt;
+  if (p.dashT > 0) p.dashT -= dt;
+
+  // 冲线
+  if (p.z >= FINISH_Z && !p.finished) {
+    p.finished = true;
+    p.finishRank = finishedOrder.length + 1;
+    p.finishTime = gameTime;
+    finishedOrder.push(p.id);
+    var bonus = [100, 60, 30, 10][p.finishRank - 1] || 0;
+    p.score += bonus;
+    flashMsg(p.name + ' 冲线！+' + bonus, '#7ce88c');
+  }
+
+  // 检查点
+  for (var c = 0; c < CHECKPOINTS.length; c++) {
+    if (p.z >= CHECKPOINTS[c]) p.respawnZ = CHECKPOINTS[c];
+  }
+}
+
+function damagePlayer(p) {
+  if (p.invuln > 0 || p.eliminated || p.finished) return;
+  p.hp--;
+  p.invuln = 1.0;
+  p.vy = 6;
+  p.vz = -3;
+  if (p.id === myId) sfx('hurt');
+  if (p.hp <= 0) {
+    p.eliminated = true;
+    flashMsg(p.name + ' 被淘汰！', '#ff3b3b');
+  } else {
+    flashMsg(p.name + ' 被陷阱命中！', '#ff6b6b');
+  }
+}
+
+function respawnPlayer(p) {
+  p.y = 0; p.z = p.respawnZ; p.x = 0; p.vx = p.vy = p.vz = 0; p.invuln = 1.2; p.grounded = true;
+}
+
+// ===================== 陷阱 =====================
+function triggerTrap(id) {
+  var t = traps[id];
+  if (!t || t.state !== 'ready') return false;
+  t.state = 'active';
+  t.timer = t.def.activeT;
+  t.anim = 0;
+  return true;
+}
+
+function updateTraps(dt) {
+  traps.forEach(function (t) {
+    if (t.state === 'active') {
+      t.timer -= dt;
+      t.anim = Math.min(1, t.anim + dt * 4);
+      if (t.timer <= 0) {
+        t.state = 'cooldown';
+        t.timer = t.def.cd;
+      }
+    } else if (t.state === 'cooldown') {
+      t.timer -= dt;
+      if (t.timer <= 0) { t.state = 'ready'; t.timer = 0; }
+    } else if (t.state === 'ready') {
+      // 机关自动周期触发
+      t.autoDelay -= dt;
+      if (t.autoDelay <= 0) {
+        triggerTrap(t.def.id);
+        t.autoDelay = t.period;
+      }
+    }
+  });
+}
+
+// ===================== 机器人 AI =====================
+function updateBot(p, dt) {
+  // 横向目标：跟随自己的车道 + 轻微摆动，避免堆成一团
+  var tx = p.aiLane + Math.sin(p.aiWobble + p.z * 0.15) * 1.2;
+
+  // 接近锯片时避让
+  for (var k = 0; k < sawMeshes.length; k++) {
+    var sp = sawMeshes[k];
+    var sx = sp.def.amp * Math.sin(gameTime * sp.def.speed + sp.def.phase);
+    var d = sp.def.z - p.z;
+    if (d > 0 && d < 3.5 && Math.abs(p.x - sx) < 2.2) {
+      tx = sx > p.x ? -3.5 : 3.5;
+    }
+  }
+
+  // 分叉路：提前选一条道
+  if (p.z > 44 && p.z < 56) {
+    tx = (p.aiLane >= 0) ? 2.8 : -2.8;
+  }
+
+  tx = clampTx(p, tx);
+
+  // 前方有激活机关则停下等待
+  var wait = false;
+  for (var j = 0; j < traps.length; j++) {
+    var tr = traps[j];
+    if (tr.state !== 'active') continue;
+    var d = tr.def.z0 - p.z;
+    if (d > 0 && d < 5 && p.grounded) { wait = true; break; }
+  }
+
+  // 向终点前进
+  p.input.f = wait ? 0 : 1;
+  p.input.b = 0;
+  p.input.l = 0;
+  p.input.r = 0;
+  p.input.jump = !wait && shouldBotJump(p);
+  p.yaw = steerToward(p, tx);
+}
+
+function shouldBotJump(p) {
+  if (!p.grounded) return false;
+  if (!courseSolid(p.x, p.z + 1.2)) return true;         // 前方缺口
+  for (var j = 0; j < traps.length; j++) {               // 跳过激活的尖刺
+    var t = traps[j];
+    if (t.def.type === 'spike' && t.state === 'active' && p.z + 2.4 >= t.def.z0 && p.z < t.def.z1) return true;
+  }
+  return false;
+}
+
+function steerToward(p, targetX) {
+  var d = targetX - p.x;
+  var desired = Math.atan2(d, 1.5);
+  return desired * 0.6;
+}
+
+// ===================== 胜负判定 =====================
+function checkWin() {
+  if (gameOver) return;
+  var alive = alivePlayers();
+  // 所有玩家都冲线或被淘汰，或时间到
+  if (alive.length === 0 || roundTimer <= 0) {
+    endGame();
+  }
+}
+
+// ===================== 消息 =====================
+var msgTimer = 0, msgEl = null;
+function flashMsg(text, color) {
+  if (isHost) broadcast({ type: 'flash', text: text, color: color });
+  showMsg(text, color);
+}
+function showMsg(text, color) {
+  if (!msgEl) msgEl = document.getElementById('msg');
+  msgEl.textContent = text;
+  msgEl.style.color = color || '#fff';
+  msgEl.classList.remove('hidden');
+  msgTimer = 1.6;
+}
+
+// ===================== 网络 =====================
+var peer = null;
+var conns = {};   // id -> conn
+var remoteName = {}; // id -> name
+
+function broadcast(obj) {
+  Object.keys(conns).forEach(function (id) {
+    try { conns[id].send(JSON.stringify(obj)); } catch (e) {}
+  });
+}
+
+function sendTo(id, obj) {
+  if (conns[id]) { try { conns[id].send(JSON.stringify(obj)); } catch (e) {} }
+}
+
+function send(obj) {
+  var c = conns[1]; // 客户端只有一条到 host 的连接
+  if (c) { try { c.send(JSON.stringify(obj)); } catch (e) {} }
+}
+
+// ===================== 游戏流程 =====================
+function startGame() {
+  // 补满机器人
+  var need = 4 - players.length;
+  for (var i = 0; i < need; i++) {
+    var id = 4 - i;
+    while (players.find(function (p) { return p.id === id; })) id--;
+    players.push(makePlayer(id, 'Bot ' + id, COLORS[id - 1], true));
+  }
+  // 排序
+  players.sort(function (a, b) { return a.id - b.id; });
+
+  initTrapState();
+
+  gameTime = 0; roundTimer = ROUND_TIME; gameOver = false; finishedOrder = [];
+
+  phase = 'playing';
+  document.getElementById('menuScreen').classList.add('hidden');
+  document.getElementById('lobbyScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+
+  flashMsg('跑到终点！躲避自动机关', '#7ce88c');
+  if (isHost) broadcast({ type: 'start', t: Date.now() });
+}
+
+function endGame() {
+  phase = 'end';
+  gameOver = true;
+  if (isHost) {
+    broadcast({ type: 'end', order: finishedOrder.slice() });
+  }
+  showEndScreen();
+}
+
+function showEndScreen() {
+  var me = players.find(function (p) { return p.id === myId; });
+  var r = me && me.finishRank;
+  var msg = document.getElementById('msg');
+  var newRecord = false;
+
+  // 更新本地纪录
+  if (me && me.finished) {
+    if (me.score > save.bestScore) { save.bestScore = me.score; newRecord = true; }
+    if (me.finishTime < save.bestTime) { save.bestTime = me.finishTime; newRecord = true; }
+    try { localStorage.setItem('traprun', JSON.stringify(save)); } catch (e) {}
+  }
+
+  if (r) {
+    msg.textContent = (r === 1 ? '你是第一名！' : '你是第 ' + r + ' 名！') + (newRecord ? '  新纪录！' : '');
+    msg.style.color = r === 1 ? '#ffd166' : '#7ce88c';
+  } else {
+    msg.textContent = '未冲线';
+    msg.style.color = '#ff3b3b';
+  }
+  msg.classList.remove('hidden');
+  msgTimer = 9999;
+  // 显示排名与分数
+  var box = document.getElementById('players');
+  var bestT = save.bestTime === Infinity ? '--' : save.bestTime.toFixed(1) + 's';
+  box.innerHTML = '<div class="head">成绩 · 最佳分 ' + save.bestScore + ' · 最快 ' + bestT + '</div>';
+  var sorted = players.slice().sort(function (a, b) { return b.score - a.score; });
+  sorted.forEach(function (p) {
+    var d = document.createElement('div');
+    d.className = 'p';
+    var rank = p.finishRank ? ('#' + p.finishRank) : (p.eliminated ? '淘汰' : '未完成');
+    d.innerHTML = '<span class="dot" style="background:' + p.color + '"></span><span class="name">' + p.name + '</span><span style="color:#ffd166">' + p.score + '</span> <span style="color:#8a94a3">' + rank + '</span>';
+    box.appendChild(d);
+  });
+}
+
+// ===================== HUD =====================
+function updateHud() {
+  var t = Math.max(0, Math.ceil(roundTimer));
+  document.getElementById('timerChip').textContent = t;
+  var sc = document.getElementById('stateChip');
+  sc.textContent = '冲线 ' + players.filter(function (p) { return p.finished; }).length + ' / ' + players.length;
+
+  var box = document.getElementById('players');
+  box.innerHTML = '<div class="head">玩家</div>';
+  players.forEach(function (p) {
+    var d = document.createElement('div');
+    d.className = 'p';
+    if (p.eliminated) d.classList.add('dead');
+    if (p.finished) d.classList.add('finished');
+    var hp = '';
+    for (var i = 0; i < MAX_HP; i++) hp += (i < p.hp ? '♥' : '♡');
+    var rank = p.finishRank ? (' #' + p.finishRank) : '';
+    d.innerHTML = '<span class="dot" style="background:' + p.color + '"></span><span class="name">' + p.name + '</span><span class="hp">' + hp + '</span><span style="color:#ffd166">' + p.score + '</span>' + rank;
+    box.appendChild(d);
+  });
+  drawMinimap();
+}
+
+// ===================== 小地图 =====================
+function drawMinimap() {
+  var c = document.getElementById('minimap');
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+  var scaleX = W / 110, scaleY = H / 14;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, 0, W, H);
+  SOLID_SEGS.forEach(function (s) {
+    ctx.fillStyle = 'rgba(120,150,200,0.5)';
+    ctx.fillRect(s.z0 * scaleX, (7 - (s.cx || 0) - s.w) * scaleY, (s.z1 - s.z0) * scaleX, s.w * 2 * scaleY);
+  });
+  // 陷阱标记（自动机关，全部可见）
+  traps.forEach(function (t) {
+    var x = ((t.def.z0 + t.def.z1) / 2) * scaleX;
+    var y = H / 2;
+    ctx.fillStyle = t.state === 'active' ? '#ff3b3b' : (t.state === 'ready' ? '#ffd166' : '#555');
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#7ce88c';
+  ctx.fillRect((FINISH_Z - 0.3) * scaleX, 0, 2, H);
+  players.forEach(function (p) {
+    if (p.eliminated) return;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.z * scaleX, (7 - p.x) * scaleY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// ===================== 渲染 =====================
+function render(dt) {
+  // 更新陷阱 mesh 动画
+  traps.forEach(function (t, i) {
+    var m = trapMeshes[i];
+    if (!m) return;
+    var eff = m.effect;
+    if (t.def.type === 'spike') {
+      eff.children.forEach(function (sp) {
+        sp.visible = t.state === 'active';
+        if (t.state === 'active') sp.position.y = 0.45 * t.anim;
+      });
+    } else if (t.def.type === 'laser') {
+      eff.visible = t.state === 'active';
+      eff.children[0].material.opacity = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(gameTime * 10));
+    } else if (t.def.type === 'collapse') {
+      m.group.visible = t.state !== 'active';
+    } else if (t.def.type === 'hammer') {
+      var hm = eff.userData.hammer;
+      if (t.state === 'active') {
+        hm.angle += dt * 11;
+      } else {
+        var target = Math.round(hm.angle / Math.PI) * Math.PI + Math.PI / 2;
+        hm.angle += (target - hm.angle) * Math.min(1, dt * 5);
+      }
+      hm.group.rotation.z = hm.angle;
+    } else if (t.def.type === 'fire') {
+      eff.children.forEach(function (fl, i) {
+        fl.visible = t.state === 'active';
+        if (t.state === 'active') {
+          fl.position.y = 1.2 + Math.sin(gameTime * 14 + i) * 0.3;
+          fl.scale.y = 0.8 + Math.sin(gameTime * 16 + i * 1.7) * 0.3;
+          fl.material.opacity = 0.6 + Math.sin(gameTime * 13 + i) * 0.3;
+        }
+      });
+    }
+  });
+
+  sawMeshes.forEach(function (s) {
+    s.x = s.def.amp * Math.sin(gameTime * s.def.speed + s.def.phase);
+    s.group.position.x = s.x;
+  });
+
+  // 塌陷陷阱隐藏地板
+  floorTiles.forEach(function (ft) {
+    var visible = true;
+    for (var i = 0; i < traps.length; i++) {
+      var t = traps[i];
+      if (t.def.type === 'collapse' && t.state === 'active' && ft.z1 > t.def.z0 && ft.z0 < t.def.z1) { visible = false; break; }
+    }
+    ft.mesh.visible = visible;
+  });
+
+  // 更新玩家 mesh
+  players.forEach(function (p, i) {
+    var g = playerGroups[i];
+    if (!p || p.eliminated) { g.visible = false; return; }
+    g.visible = true;
+    g.position.set(p.x, p.y, p.z);
+    g.rotation.y = p.yaw;
+    var label = labelSprites[i];
+    if (label.userData._name !== p.name) {
+      label.userData._name = p.name;
+      var ctx = label.userData.ctx;
+      ctx.clearRect(0, 0, 256, 64);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, 256, 64);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(p.name, 128, 32);
+      label.userData.tex.needsUpdate = true;
+    }
+  });
+
+  // 相机
+  var me = players[myId - 1] || players[0];
+  if (me) {
+    var camDist = 7;
+    var cdirX = Math.sin(yaw) * Math.cos(pitch);
+    var cdirY = Math.sin(pitch);
+    var cdirZ = Math.cos(yaw) * Math.cos(pitch);
+    var cx = me.x - cdirX * camDist;
+    var cy = me.y + 1.4 - cdirY * camDist;
+    var cz = me.z - cdirZ * camDist;
+    if (cy < 0.8) cy = 0.8;
+    camera.position.set(cx, cy, cz);
+    camera.lookAt(me.x, me.y + 1.2, me.z);
+  }
+
+  // 冲刺 FOV + 速度线 + 拖尾
+  var dashing = !!keys.dash && !!me && !me.eliminated && !me.finished;
+  var targetFov = dashing ? 84 : 70;
+  camera.fov += (targetFov - camera.fov) * 0.18;
+  camera.updateProjectionMatrix();
+  var sl = document.getElementById('speedlines');
+  sl.style.opacity = dashing ? '1' : '0';
+  if (dashing && me) {
+    trailAcc += dt;
+    while (trailAcc >= 0.03) {
+      trailAcc -= 0.03;
+      var tm = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(me.color), transparent: true, opacity: 0.55 }));
+      tm.position.set(me.x, me.y + 0.6, me.z);
+      scene.add(tm);
+      trailDots.push({ mesh: tm, life: 0.28 });
+    }
+  }
+  for (var i = trailDots.length - 1; i >= 0; i--) {
+    var td = trailDots[i];
+    td.life -= dt;
+    if (td.life <= 0) { scene.remove(td.mesh); trailDots.splice(i, 1); continue; }
+    td.mesh.material.opacity = 0.55 * (td.life / 0.28);
+    td.mesh.scale.setScalar(td.life / 0.28);
+  }
+
+  renderer.render(scene, camera);
+
+  if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) document.getElementById('msg').classList.add('hidden'); }
+}
+
+// ===================== 主循环 =====================
+var lastTime = 0;
+var accum = 0;
+var sendAcc = 0;
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  var dt = Math.min(0.05, (now - lastTime) / 1000 || 0.016);
+  lastTime = now;
+
+  if (phase === 'playing') {
+    gameTime += dt;
+    if (isHost) {
+      // 本地输入 -> 自己
+      var me = players[myId - 1];
+      if (me && !me.eliminated && !me.finished) {
+        me.input = { f: keys.f, b: keys.b, l: keys.l, r: keys.r, jump: keys.jump, dash: keys.dash };
+        me.yaw = yaw;
+        if (keys.dash) me.dashT = 0.1;
+      }
+      // 模拟
+      var step = 1 / 60;
+      accum += dt;
+      while (accum >= step) {
+        accum -= step;
+        players.forEach(function (p) {
+          if (p.isBot) updateBot(p, step);
+          updatePlayer(p, step);
+        });
+        updateTraps(step);
+        roundTimer -= step;
+      }
+      checkWin();
+      // 广播状态
+      sendAcc += dt;
+      if (sendAcc >= STATE_TICK / 1000) {
+        sendAcc = 0;
+        broadcastState();
+      }
+    } else {
+      // 客户端：仅发送输入
+      sendAcc += dt;
+      if (sendAcc >= STATE_TICK / 1000) {
+        sendAcc = 0;
+        send({ type: 'input', f: keys.f, b: keys.b, l: keys.l, r: keys.r, jump: keys.jump, dash: keys.dash, yaw: yaw });
+      }
+    }
+    updateHud();
+  } else if (phase === 'lobby') {
+    updateLobby();
+  }
+
+  if (scene) render(dt);
+}
+
+function broadcastState() {
+  broadcast({
+    type: 'state',
+    t: gameTime,
+    timer: roundTimer,
+    players: players.map(function (p) {
+      return { id: p.id, x: p.x, y: p.y, z: p.z, yaw: p.yaw, hp: p.hp, finished: p.finished, eliminated: p.eliminated, finishRank: p.finishRank, score: p.score };
+    }),
+    traps: traps.map(function (t) { return { id: t.def.id, state: t.state, timer: t.timer }; }),
+    coins: coins.map(function (c) { return c.taken; })
+  });
+}
+
+function applyState(msg) {
+  gameTime = msg.t;
+  roundTimer = msg.timer;
+  msg.players.forEach(function (sp) {
+    var p = players.find(function (pp) { return pp.id === sp.id; });
+    if (p) {
+      p.x = sp.x; p.y = sp.y; p.z = sp.z; p.yaw = sp.yaw; p.hp = sp.hp;
+      p.finished = sp.finished; p.eliminated = sp.eliminated; p.finishRank = sp.finishRank; p.score = sp.score;
+    }
+  });
+  if (msg.traps) {
+    msg.traps.forEach(function (st) {
+      var t = traps[st.id];
+      if (t) { t.state = st.state; t.timer = st.timer; }
+    });
+  }
+  if (msg.coins) {
+    msg.coins.forEach(function (taken, i) { if (coins[i]) coins[i].taken = taken; });
+  }
+}
+
+// ===================== 大厅 =====================
+function renderLobbyList() {
+  var ul = document.getElementById('lobbyList');
+  ul.innerHTML = '';
+  players.forEach(function (p) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="dot" style="background:' + p.color + '"></span>' + p.name + (p.id === 1 ? ' (房主)' : '');
+    ul.appendChild(li);
+  });
+  for (var i = players.length; i < 4; i++) {
+    var li2 = document.createElement('li');
+    li2.style.opacity = '0.4';
+    li2.innerHTML = '<span class="dot" style="background:#333"></span>等待玩家...（或机器人补位）';
+    ul.appendChild(li2);
+  }
+}
+
+function updateLobby() {
+  renderLobbyList();
+}
+
+function addPlayer(id, name, isBot) {
+  var p = makePlayer(id, name, COLORS[id - 1], isBot);
+  players.push(p);
+  players.sort(function (a, b) { return a.id - b.id; });
+  renderLobbyList();
+}
+
+// ===================== 网络实现 =====================
+function createRoom() {
+  var name = document.getElementById('nameInput').value.trim() || '玩家1';
+  myName = name;
+  document.getElementById('menuStatus').textContent = '正在创建房间...';
+  var code = String(Math.floor(10000 + Math.random() * 90000));
+  peer = new Peer(code);
+  peer.on('open', function (id) {
+    isHost = true;
+    myId = 1;
+    players = [];
+    addPlayer(1, myName, false);
+    document.getElementById('menuScreen').classList.add('hidden');
+    document.getElementById('lobbyScreen').classList.remove('hidden');
+    document.getElementById('lobbyStatus').textContent = '房间码（已复制到剪贴板）: ' + id;
+    try { navigator.clipboard.writeText(id); } catch (e) {}
+  });
+  peer.on('error', function (err) {
+    if (err.type === 'unavailable-id') {
+      try { peer.destroy(); } catch (e) {}
+      createRoom();
+    } else {
+      document.getElementById('menuStatus').textContent = '创建失败: ' + (err.type || '未知错误');
+    }
+  });
+  peer.on('connection', function (conn) {
+    conn.on('open', function () {
+      var id = 2;
+      while (players.find(function (p) { return p.id === id; })) id++;
+      conns[id] = conn;
+      conn.userId = id;
+      conn.on('data', function (raw) { handleMsg(id, raw); });
+      conn.on('close', function () {
+        delete conns[id];
+        var p = players.find(function (pp) { return pp.id === id; });
+        if (p) { players = players.filter(function (pp) { return pp.id !== id; }); }
+        renderLobbyList();
+      });
+      sendTo(id, { type: 'joined', id: id });
+    });
+  });
+}
+
+function joinRoom() {
+  var name = document.getElementById('nameInput').value.trim() || '玩家';
+  var code = document.getElementById('codeInput').value.trim();
+  if (!/^\d{5}$/.test(code)) { document.getElementById('menuStatus').textContent = '请输入 5 位房间码'; return; }
+  myName = name;
+  document.getElementById('menuStatus').textContent = '正在连接...';
+  peer = new Peer();
+  peer.on('open', function () {
+    var conn = peer.connect(code, { reliable: true });
+    conn.on('open', function () {
+      isHost = false;
+      conns[1] = conn;
+      conn.on('data', function (raw) { handleMsg(1, raw); });
+      conn.on('close', function () { location.reload(); });
+      send({ type: 'hello', name: myName });
+      document.getElementById('menuScreen').classList.add('hidden');
+      document.getElementById('lobbyScreen').classList.remove('hidden');
+      document.getElementById('lobbyStatus').textContent = '已连接，等待房主开始...';
+      document.getElementById('startBtn').style.display = 'none';
+      players = [];
+      renderLobbyList();
+    });
+    conn.on('error', function () { document.getElementById('menuStatus').textContent = '连接失败，请检查房间码'; });
+  });
+  peer.on('error', function () { document.getElementById('menuStatus').textContent = '连接失败'; });
+}
+
+function handleMsg(fromId, raw) {
+  var m;
+  try { m = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return; }
+  if (isHost) {
+    switch (m.type) {
+      case 'hello':
+        addPlayer(fromId, m.name, false);
+        sendTo(fromId, { type: 'lobby', players: players.map(function (p) { return { id: p.id, name: p.name, color: p.color }; }) });
+        broadcast({ type: 'lobby', players: players.map(function (p) { return { id: p.id, name: p.name, color: p.color }; }) });
+        break;
+      case 'input':
+        var p = players.find(function (pp) { return pp.id === fromId; });
+        if (p) { p.input = { f: m.f, b: m.b, l: m.l, r: m.r, jump: m.jump, dash: m.dash }; p.yaw = m.yaw; }
+        break;
+    }
+  } else {
+    switch (m.type) {
+      case 'joined':
+        myId = m.id;
+        break;
+      case 'lobby':
+        players = m.players.map(function (sp) { return makePlayer(sp.id, sp.name, sp.color, false); });
+        renderLobbyList();
+        break;
+      case 'start':
+        document.getElementById('lobbyScreen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        phase = 'playing';
+        break;
+      case 'state':
+        applyState(m);
+        break;
+      case 'flash':
+        showMsg(m.text, m.color);
+        break;
+      case 'end':
+        if (m.order) {
+          m.order.forEach(function (id, idx) {
+            var p = players.find(function (pp) { return pp.id === id; });
+            if (p) p.finishRank = idx + 1;
+          });
+        }
+        phase = 'end';
+        showEndScreen();
+        break;
+    }
+  }
+}
+
+// ===================== 单机 =====================
+function startSolo() {
+  var name = document.getElementById('nameInput').value.trim() || '你';
+  myName = name;
+  isHost = true;
+  myId = 1;
+  players = [makePlayer(1, name, COLORS[0], false)];
+  for (var i = 2; i <= 4; i++) players.push(makePlayer(i, 'Bot ' + i, COLORS[i - 1], true));
+  startGame();
+}
+
+// ===================== 输入 =====================
+function setupInput() {
+  window.addEventListener('keydown', function (e) {
+    if (phase !== 'playing') return;
+    switch (e.code) {
+      case 'KeyW': case 'ArrowUp': keys.f = 1; break;
+      case 'KeyS': case 'ArrowDown': keys.b = 1; break;
+      case 'KeyA': case 'ArrowLeft': keys.l = 1; break;
+      case 'KeyD': case 'ArrowRight': keys.r = 1; break;
+      case 'Space': keys.jump = true; e.preventDefault(); break;
+      case 'ShiftLeft': case 'ShiftRight': keys.dash = 1; break;
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    switch (e.code) {
+      case 'KeyW': case 'ArrowUp': keys.f = 0; break;
+      case 'KeyS': case 'ArrowDown': keys.b = 0; break;
+      case 'KeyA': case 'ArrowLeft': keys.l = 0; break;
+      case 'KeyD': case 'ArrowRight': keys.r = 0; break;
+      case 'Space': keys.jump = false; break;
+      case 'ShiftLeft': case 'ShiftRight': keys.dash = 0; break;
+    }
+  });
+
+  renderer.domElement.addEventListener('click', function () {
+    if (document.pointerLockElement !== renderer.domElement) {
+      renderer.domElement.requestPointerLock();
+    }
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (document.pointerLockElement !== renderer.domElement) return;
+    yaw -= e.movementX * 0.0025;
+    pitch -= e.movementY * 0.0025;
+    pitch = Math.max(-1.2, Math.min(0.35, pitch));
+  });
+}
+
+// ===================== 启动 =====================
+document.getElementById('soloBtn').addEventListener('click', startSolo);
+document.getElementById('createBtn').addEventListener('click', createRoom);
+document.getElementById('joinBtn').addEventListener('click', joinRoom);
+document.getElementById('startBtn').addEventListener('click', function () {
+  if (isHost) startGame();
+});
+document.getElementById('leaveBtn').addEventListener('click', function () { location.reload(); });
+
+initThree();
+setupInput();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
