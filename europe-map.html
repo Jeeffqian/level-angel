@@ -102,6 +102,8 @@
   .pick.tur { color:#ffc76b; border-color:#ff9f0a; }
   .pick.ger { color:#7fe3f7; border-color:#17bddd; }
   .pick.bri { color:#a8c2ff; border-color:#4d7cff; }
+  .pickgrid { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-height:46vh; overflow-y:auto; padding:4px 2px; }
+  .pickgrid .pick { flex:1 1 30%; min-width:116px; padding:10px 6px; font-size:14px; letter-spacing:1px; }
   .mapholder { position: relative; flex: 1; min-width: 0; display: flex; }
   .hud {
     position: absolute; top: 12px; right: 12px; z-index: 12; display: flex; align-items: center; gap: 10px; background: rgba(13,23,40,.92); border: 1px solid #ffd16644; border-radius: 12px; padding: 8px 14px; box-shadow: 0 8px 24px #00000066; font-size: 14px;
@@ -112,7 +114,7 @@
   @keyframes pulse { from { opacity:.5 } to { opacity:1 } }
   .endturn { background: linear-gradient(135deg,#7fe3f7,#4d7cff); color:#04101f; border:none; border-radius:10px; padding:8px 14px; font-weight:800; cursor:pointer; }
   .endturn:hover { filter: brightness(1.12); }
-  .duoinfo { position:absolute; left:12px; bottom:52px; z-index:12; display:flex; flex-direction:column; gap:6px; font-size:12px; }
+  .duoinfo { position:absolute; left:12px; bottom:52px; z-index:12; display:flex; flex-direction:column; gap:6px; font-size:12px; max-height:34vh; overflow-y:auto; }
   .duoinfo .pl { display:flex; align-items:center; gap:8px; background:rgba(13,23,40,.9); border:1px solid #ffffff22; border-radius:10px; padding:6px 10px; }
   .duoinfo .pl.act { border-color:#ffd166; box-shadow:0 0 12px #ffd16644; }
   .duoinfo .dotc { width:10px; height:10px; border-radius:50%; }
@@ -209,7 +211,7 @@
 <body>
 <header>
   <h1>欧陆争霸</h1>
-  <div class="sub">真实欧洲地图 · 三大主国 + 众多资源邦国</div>
+  <div class="sub">真实欧洲地图 · 26 国混战</div>
 </header>
 
 <div class="legend">
@@ -261,7 +263,7 @@
     <div class="desc" id="p-desc"></div>
     <div class="hint" id="p-hint">
       <span class="dot">●</span> 点击地图上的国家查看详情<br>
-      <span class="dot">●</span> 三大主国各有王牌兵种<br>
+      <span class="dot">●</span> 每个国家都有三军武器，必须先打光军备才能攻破总部<br>
       <span class="dot">●</span> 邦国提供不同资源
     </div>
   </div>
@@ -274,12 +276,13 @@
 <div class="overlay" id="modeOv">
   <div class="card modecard">
     <h1 class="big">地图游戏</h1>
-    <p>真实欧洲地图 · 三大主国 + 众多资源邦国</p>
+    <p>真实欧洲地图 · 26 国混战</p>
     <div class="modepick">
       <button class="modebtn" id="btnSolo">单人模式<small>一人统领，30 秒 = 1 天</small></button>
       <button class="modebtn" id="btnDuo">双人模式<small>P1 / P2 轮流回合</small></button>
       <button class="modebtn" id="btnTrio">三人模式<small>P1 / P2 / P3 混战</small></button>
-      <button class="modebtn" id="btnAI">AI 填充模式<small>你 + 1~2 名 AI，难度 1-5</small></button>
+      <button class="modebtn" id="btnAI">AI 对决<small>你 + 1~2 名 AI，难度 1-5</small></button>
+      <button class="modebtn" id="btnDom">全欧争霸<small>26 国混战 · 其余 25 国全部由 AI 接管</small></button>
       <button class="modebtn" id="btnOnline">联机模式<small>创建房间 / 输入房间码，2~3 人异地对战</small></button>
     </div>
   </div>
@@ -347,12 +350,8 @@
 <div class="overlay hidden" id="startOv">
   <div class="card">
     <h2 id="pickTitle">选择初始国</h2>
-    <p id="pickSub">三大主国，各有所长，随你统领</p>
-    <div class="choices">
-      <button class="pick tur" data-k="turkey">土耳其</button>
-      <button class="pick ger" data-k="germany">德国</button>
-      <button class="pick bri" data-k="uk">英国</button>
-    </div>
+    <p id="pickSub">26 国任选其一，作为你的主国</p>
+    <div class="choices"><div class="pickgrid" id="pickChoices"></div></div>
     <div class="backrow hidden" id="pickBack"><button class="closebtn" id="pickBackBtn">返回</button></div>
   </div>
 </div>
@@ -561,32 +560,32 @@ const SND = (() => {
   window.addEventListener(ev, () => SND.unlock(), { capture: true, passive: true }));
 
 const STATES = {
-  turkey:     { name:'土耳其',    type:'main',  color:'#b97a00', stats:{陆军:100,空军:55,海军:40},  desc:'横跨欧亚的庞然大物，并吞保加利亚与亚美尼亚，兵锋直指多瑙河与高加索。' },
-  germany:    { name:'德国',      type:'main',  color:'#17bddd', stats:{陆军:75,空军:100,海军:60}, desc:'中欧工业心脏，精心锻造的空军掌握制空权。无论侦察、轰炸还是空战，都令对手望尘莫及，是天空的主人。' },
-  uk:         { name:'英国',      type:'main',  color:'#2b4cff', stats:{陆军:60,空军:75,海军:100}, desc:'岛国雄狮，皇家海军纵横四海。巨舰是最可靠的后盾，无论贸易线还是登陆战，都由舰队说了算。' },
-  portugal:   { name:'葡萄牙',    type:'vassal', color:'#3d6b57', inc: 60,  resource:'航海 · 香料', desc:'面向大西洋的航海邦国，掌握远洋贸易航线。' },
-  spain:      { name:'西班牙',    type:'vassal', color:'#4a5a3a', inc: 95,  resource:'白银 · 羊毛', desc:'西南半岛邦国，银矿与羊毛带来滚滚财富。' },
-  france:     { name:'法国',      type:'vassal', color:'#2f5d57', inc: 90,  resource:'工业 · 葡萄酒', desc:'富庶的西欧邦国，工坊林立，葡萄酒甘醇。' },
-  ireland:    { name:'爱尔兰',    type:'vassal', color:'#4a6b4e', inc: 45,  resource:'农牧 · 绿岛', desc:'英格兰以西的绿岛邦国，田园农牧充裕。' },
-  netherlands:{ name:'荷兰',      type:'vassal', color:'#35586b', inc: 95,  resource:'贸易 · 金融', desc:'低地贸易邦国，遍布商港与钱庄。' },
-  belgium:    { name:'比利时',    type:'vassal', color:'#4c5a70', inc: 65,  resource:'毛纺 · 铁矿', desc:'吞并卢森堡要塞后，比利时并得佛兰德毛纺与铁矿之利，商路畅通。' },
-  switzerland:{ name:'瑞士',      type:'vassal', color:'#6a6a5f', inc: 40,  resource:'山地堡垒', desc:'阿尔卑斯山中的堡垒邦国，易守难攻。' },
-  italy:      { name:'意大利',    type:'vassal', color:'#6b553a', inc: 70,  resource:'工匠 · 美术', desc:'亚平宁半岛邦国，工巧匠遍布，美术璀璨。' },
-  denmark:    { name:'丹麦',      type:'vassal', color:'#3f5a6d', inc: 55,  resource:'渔业 · 航运', desc:'北欧航运邦国，扼守咽喉海峡。' },
-  norway:     { name:'挪威',      type:'vassal', color:'#3a5a58', inc: 50,  resource:'木材 · 渔业', desc:'峡湾之国，木材与渔业丰饶。' },
-  sweden:     { name:'瑞典',      type:'vassal', color:'#465a52', inc: 65,  resource:'铁矿 · 森林', desc:'北欧大国，优质铁矿与无尽森林。' },
-  finland:    { name:'芬兰',      type:'vassal', color:'#4a5d48', inc: 45,  resource:'森林 · 极寒', desc:'千湖森林之国，极寒让入侵者寸步难行。' },
-  poland:     { name:'波兰',      type:'vassal', color:'#5d5a35', inc: 65,  resource:'黑麦 · 骑兵', desc:'吞并斯洛伐克后，波兰攫取喀尔巴阡门户，黑麦与骑兵驰骋南下。' },
-  czech:      { name:'捷克',      type:'vassal', color:'#6a5a44', inc: 70,  resource:'波米亚水晶', desc:'波希米亚水晶晶莹剔透，是名贵的贡品。' },
-  austria:    { name:'奥地利',    type:'vassal', color:'#7a4f5c', inc: 70,  resource:'水晶 · 音乐', desc:'吞并斯洛文尼亚后，奥地利直抵亚得里亚海，音乐与水晶之国愈发富丽。' },
-  hungary:    { name:'匈牙利',    type:'vassal', color:'#4d5c42', inc: 55,  resource:'马匹 · 葡萄', desc:'吞并克罗地亚后，匈牙利握有亚得里亚海出海口，良马与葡萄园著称。' },
-  ukraine:    { name:'乌克兰',    type:'vassal', color:'#55602f', inc: 85,  resource:'黑土 · 粮食', desc:'欧洲粮仓，黑土地出产的粮食养活了无数军队。' },
-  belarus:    { name:'白俄罗斯',  type:'vassal', color:'#5f5c3c', inc: 40,  resource:'沼泽 · 木材', desc:'密林沼泽之地，道路难行而木材丰富。' },
-  serbia:     { name:'塞尔维亚',  type:'vassal', color:'#5c4a3f', inc: 50,  resource:'铜矿 · 核桃木', desc:'吞并波黑、黑山与科索沃后的巴尔干大邦，铜矿、森林与海岸并得。' },
-  greece:     { name:'希腊',      type:'vassal', color:'#3a5b6b', inc: 55,  resource:'橄榄 · 航海', desc:'吞并阿尔巴尼亚与北马其顿后，希腊一统巴尔干南部，橄榄油与航海经验丰富。' },
-  romania:    { name:'罗马尼亚',  type:'vassal', color:'#4b4940', inc: 85,  resource:'石油 · 黑土地', desc:'拥有珍贵的石油资源，并吞摩尔多瓦后疆域直达德涅斯特河。' },
-  russia:     { name:'俄罗斯',    type:'vassal', color:'#43503a', inc: 100, resource:'广袤国土 · 皮毛', desc:'吸纳格鲁吉亚与阿塞拜疆后，高加索山脉尽入囊中，领土深不可测。' },
-  jj:         { name:'JJ共和国',  type:'vassal', color:'#7a5f8a', inc: 80,  resource:'合金', desc:'爱沙尼亚、拉脱维亚与立陶宛握手言和，合并而成的联邦制邦国，举国冶炼合金，技艺冠绝波罗的海。' },
+  turkey:     { name:'土耳其',    type:'main',   color:'#b97a00', stats:{陆军:100,空军:55,海军:40},  inc: 170, resource:'横跨亚欧 · 陆军强盛', desc:'横跨欧亚的庞然大物，并吞保加利亚与亚美尼亚，兵锋直指多瑙河与高加索。' },
+  germany:    { name:'德国',      type:'main',   color:'#17bddd', stats:{陆军:75,空军:100,海军:60}, inc: 200, resource:'工业心脏 · 制空权', desc:'中欧工业心脏，精心锻造的空军掌握制空权。无论侦察、轰炸还是空战，都令对手望尘莫及，是天空的主人。' },
+  uk:         { name:'英国',      type:'main',   color:'#2b4cff', stats:{陆军:60,空军:75,海军:100}, inc: 165, resource:'岛国雄狮 · 海上霸权', desc:'岛国雄狮，皇家海军纵横四海。巨舰是最可靠的后盾，无论贸易线还是登陆战，都由舰队说了算。' },
+  portugal:   { name:'葡萄牙',    type:'vassal', color:'#3d6b57', stats:{陆军:52,空军:60,海军:88}, inc: 70, resource:'航海 · 香料', desc:'面向大西洋的航海邦国，掌握远洋贸易航线。' },
+  spain:      { name:'西班牙',    type:'vassal', color:'#4a5a3a', stats:{陆军:64,空军:55,海军:78}, inc: 95, resource:'白银 · 羊毛', desc:'西南半岛邦国，银矿与羊毛带来滚滚财富。' },
+  france:     { name:'法国',      type:'vassal', color:'#2f5d57', stats:{陆军:82,空军:80,海军:72}, inc: 95, resource:'工业 · 葡萄酒', desc:'富庶的西欧邦国，工坊林立，葡萄酒甘醇。' },
+  ireland:    { name:'爱尔兰',    type:'vassal', color:'#4a6b4e', stats:{陆军:50,空军:48,海军:55}, inc: 45,  resource:'农牧 · 绿岛', desc:'英格兰以西的绿岛邦国，田园农牧充裕。' },
+  netherlands:{ name:'荷兰',      type:'vassal', color:'#35586b', stats:{陆军:60,空军:55,海军:82}, inc: 95, resource:'贸易 · 金融', desc:'低地贸易邦国，遍布商港与钱庄。' },
+  belgium:    { name:'比利时',    type:'vassal', color:'#4c5a70', stats:{陆军:62,空军:55,海军:50}, inc: 65, resource:'毛纺 · 铁矿', desc:'吞并卢森堡要塞后，比利时并得佛兰德毛纺与铁矿之利，商路畅通。' },
+  switzerland:{ name:'瑞士',      type:'vassal', color:'#6a6a5f', stats:{陆军:78,空军:50,海军:20}, inc: 40, resource:'山地堡垒', desc:'阿尔卑斯山中的堡垒邦国，易守难攻。' },
+  italy:      { name:'意大利',    type:'vassal', color:'#6b553a', stats:{陆军:78,空军:66,海军:84}, inc: 75, resource:'工匠 · 美术', desc:'亚平宁半岛邦国，工巧匠遍布，美术璀璨。' },
+  denmark:    { name:'丹麦',      type:'vassal', color:'#3f5a6d', stats:{陆军:50,空军:50,海军:80}, inc: 55, resource:'渔业 · 航运', desc:'北欧航运邦国，扼守咽喉海峡。' },
+  norway:     { name:'挪威',      type:'vassal', color:'#3a5a58', stats:{陆军:52,空军:55,海军:88}, inc: 50, resource:'木材 · 渔业', desc:'峡湾之国，木材与渔业丰饶。' },
+  sweden:     { name:'瑞典',      type:'vassal', color:'#465a52', stats:{陆军:70,空军:65,海军:74}, inc: 65, resource:'铁矿 · 森林', desc:'北欧大国，优质铁矿与无尽森林。' },
+  finland:    { name:'芬兰',      type:'vassal', color:'#4a5d48', stats:{陆军:68,空军:62,海军:45}, inc: 45, resource:'森林 · 极寒', desc:'千湖森林之国，极寒让入侵者寸步难行。' },
+  poland:     { name:'波兰',      type:'vassal', color:'#5d5a35', stats:{陆军:82,空军:60,海军:30}, inc: 65, resource:'黑麦 · 骑兵', desc:'吞并斯洛伐克后，波兰攫取喀尔巴阡门户，黑麦与骑兵驰骋南下。' },
+  czech:      { name:'捷克',      type:'vassal', color:'#6a5a44', stats:{陆军:62,空军:55,海军:16}, inc: 70, resource:'波米亚水晶', desc:'波希米亚水晶晶莹剔透，是名贵的贡品。' },
+  austria:    { name:'奥地利',    type:'vassal', color:'#7a4f5c', stats:{陆军:68,空军:55,海军:24}, inc: 70, resource:'水晶 · 音乐', desc:'吞并斯洛文尼亚后，奥地利直抵亚得里亚海，音乐与水晶之国愈发富丽。' },
+  hungary:    { name:'匈牙利',    type:'vassal', color:'#4d5c42', stats:{陆军:66,空军:52,海军:22}, inc: 55, resource:'马匹 · 葡萄', desc:'吞并克罗地亚后，匈牙利握有亚得里亚海出海口，良马与葡萄园著称。' },
+  ukraine:    { name:'乌克兰',    type:'vassal', color:'#55602f', stats:{陆军:84,空军:60,海军:32}, inc: 85, resource:'黑土 · 粮食', desc:'欧洲粮仓，黑土地出产的粮食养活了无数军队。' },
+  belarus:    { name:'白俄罗斯',  type:'vassal', color:'#5f5c3c', stats:{陆军:62,空军:50,海军:14}, inc: 40, resource:'沼泽 · 木材', desc:'密林沼泽之地，道路难行而木材丰富。' },
+  serbia:     { name:'塞尔维亚',  type:'vassal', color:'#5c4a3f', stats:{陆军:78,空军:55,海军:34}, inc: 50, resource:'铜矿 · 核桃木', desc:'吞并波黑、黑山与科索沃后的巴尔干大邦，铜矿、森林与海岸并得。' },
+  greece:     { name:'希腊',      type:'vassal', color:'#3a5b6b', stats:{陆军:68,空军:60,海军:90}, inc: 55, resource:'橄榄 · 航海', desc:'吞并阿尔巴尼亚与北马其顿后，希腊一统巴尔干南部，橄榄油与航海经验丰富。' },
+  romania:    { name:'罗马尼亚',  type:'vassal', color:'#4b4940', stats:{陆军:70,空军:55,海军:60}, inc: 85, resource:'石油 · 黑土地', desc:'拥有珍贵的石油资源，并吞摩尔多瓦后疆域直达德涅斯特河。' },
+  russia:     { name:'俄罗斯',    type:'vassal', color:'#43503a', stats:{陆军:96,空军:86,海军:66}, inc: 105, resource:'广袤国土 · 皮毛', desc:'吸纳格鲁吉亚与阿塞拜疆后，高加索山脉尽入囊中，领土深不可测。' },
+  jj:         { name:'JJ共和国',  type:'vassal', color:'#7a5f8a', stats:{陆军:55,空军:55,海军:80}, inc: 80, resource:'合金', desc:'爱沙尼亚、拉脱维亚与立陶宛握手言和，合并而成的联邦制邦国，举国冶炼合金，技艺冠绝波罗的海。' },
 };
 const ORDER = ['turkey','germany','uk','portugal','spain','france','ireland','netherlands','belgium','switzerland','italy','denmark','norway','sweden','finland','poland','czech','austria','hungary','ukraine','belarus','jj','serbia','greece','romania','russia'];
 /* autogenerated */
@@ -673,27 +672,30 @@ function select(key) {
   if (chip) chip.classList.add('sel');
   panelName.textContent = s.name;
   panelName.style.color = s.color;
-  panelTag.textContent = (s.type === 'main' ? '主国' : '邦国 · 附属资源') + (key === myCountry ? ' · 你的主国' : '');
-  panelTag.className = s.type === 'main' ? 'p-tag t-main' : 'p-tag t-vass';
+  panelTag.textContent = (key === myCountry ? '你的主国' : (s.type === 'main' ? '主国' : '邦国'));
+  panelTag.className = (key === myCountry || s.type === 'main') ? 'p-tag t-main' : 'p-tag t-vass';
   panelHint.style.display = 'none';
   panelStats.innerHTML = '';
   panelRes.style.display = '';
-  if (s.type === 'main') {
-    const parts = Object.keys(DOM_CN).map(d => {
-      const pc = domBonusPct(key, d);
-      return DOM_CN[d] + ' ' + s.stats[DOM_CN[d]] + '（' + (pc > 0 ? '+' : '') + pc + '%）';
-    });
-    panelRes.innerHTML = '<b>' + s.name + ' 兵种专长：</b>' + parts.join(' · ') +
-      (key === myCountry ? '<br><span style="color:#93a7c2;font-size:13px">该国部队用对应兵种出击时，按上面百分比增减伤害</span>' : '');
-  } else {
-    panelRes.innerHTML = '<b>资源：</b>' + s.resource +
-      '　<span style="color:#8fe3a8">占领后每日产出 ¥' + s.inc + '</span>';
-  }
+  const parts = Object.keys(DOM_CN).map(d => {
+    const pc = domBonusPct(key, d);
+    return DOM_CN[d] + ' ' + (s.stats[DOM_CN[d]] || 0) + '（' + (pc > 0 ? '+' : '') + pc + '%）';
+  });
+  panelRes.innerHTML = '<b>' + s.name + ' 兵种专长：</b>' + parts.join(' · ') +
+    (key === myCountry ? '<br><span style="color:#93a7c2;font-size:13px">该国部队用对应兵种出击时，按上面百分比增减伤害</span>' : '') +
+    '<br><b>资源：</b>' + s.resource + '　<span style="color:#8fe3a8">占领后每日产出 ¥' + (s.inc || 0) + '</span>';
   const own1 = isDuel() && taken[key] && taken[key] !== turn + 1;
   const df = taken[key]
-    ? '防守 ' + Math.max(0, defOf(key)) + (own1 ? ' · 土地已归对方所统' : ' · 土地已归你所统')
-    : '防守 ' + Math.max(0, defOf(key)) + (defOf(key) <= 0 ? '（防守归零则被攻克）' : '');
-  panelRes.innerHTML += '<br><span style="color:#93a7c2;font-size:13px">⚔ ' + df + '</span>';
+    ? '总部防线 ' + Math.max(0, defOf(key)) + (own1 ? ' · 土地已归对方所统' : ' · 土地已归你所统')
+    : '总部防线 ' + Math.max(0, defOf(key));
+  const alive = armsAlive(key).length > 0;
+  const armsTxt = ARMS_BR.map(b =>
+    ARMS_CN[b] + ' ' + armLeft(key, b) + '/' + COUNTRY_ARMS[key][b].hp + '（攻' + COUNTRY_ARMS[key][b].atk + '）').join(' · ');
+  panelRes.innerHTML += '<br><span style="color:#7fe3f7;font-size:13px">🛡 三军军备：' + armsTxt + '</span>' +
+    '<br><span style="color:#93a7c2;font-size:13px">⚔ ' + df + '</span>' +
+    '<br><span style="color:' + (alive ? '#ff8a8a' : '#8fe3a8') + ';font-size:13px">' +
+    (alive ? '⚠ 军备未清空：必须先打光全部武器才能攻打总部，存活武器会反击'
+           : '✓ 军备已清空：火力可直接攻打总部') + '</span>';
   if (key === myCountry) {
     const bx = [];
     if (atkBonus) bx.push('攻击 +' + atkBonus);
@@ -724,8 +726,50 @@ chipsEl.innerHTML = ORDER.map(key => {
 
 const defState = {};
 const taken = {};
-const baseDef = k => (STATES[k].type === 'main' ? 12 : 6);
+const baseDef = k => 12;   // 所有国家总部防线统一为 12
 const defOf = k => defState[k] == null ? defState[k] = baseDef(k) : defState[k];
+
+// ==================== 三军武器系统 ====================
+// 每个国家都有 空军 / 陆军 / 海军 三支常备军（攻防值由本作设计）。
+// 攻打目标时：必须先全灭其全部武器，火力才能落到总部防线（defState）。
+// 存活武器每回合会对进攻单位发起反击，攻击力 = 存活武器 atk 之和。
+const ARMS_BR = ['air', 'army', 'navy'];
+const ARMS_CN = { air: '空军', army: '陆军', navy: '海军' };
+const COUNTRY_ARMS = {
+  turkey:      { air:{ name:'安纳托利亚鹰群',   icon:'🦅', atk:4, hp: 9 }, army:{ name:'博斯普鲁斯装甲军', icon:'🪖', atk:5, hp:15 }, navy:{ name:'黑海舰队',       icon:'🚢', atk:4, hp:11 } },
+  germany:     { air:{ name:'帝国空军联队',     icon:'🛩', atk:6, hp:13 }, army:{ name:'莱茵装甲师',       icon:'🪖', atk:5, hp:12 }, navy:{ name:'北海舰群',       icon:'🚢', atk:3, hp: 8 } },
+  uk:          { air:{ name:'皇家空军',         icon:'✈️', atk:5, hp:11 }, army:{ name:'白金汉卫队',       icon:'🪖', atk:3, hp: 9 }, navy:{ name:'皇家海军舰队',   icon:'⚓', atk:6, hp:14 } },
+  portugal:    { air:{ name:'大西洋巡逻机队',   icon:'🛩', atk:3, hp: 7 }, army:{ name:'里斯本卫戍军',     icon:'🪖', atk:3, hp: 9 }, navy:{ name:'远洋商船舰队',   icon:'⛵', atk:4, hp:12 } },
+  spain:       { air:{ name:'伊比利亚空中队',   icon:'🛩', atk:4, hp: 9 }, army:{ name:'白银军团',         icon:'🪖', atk:5, hp:12 }, navy:{ name:'无敌船队',       icon:'🚢', atk:5, hp:12 } },
+  france:      { air:{ name:'高卢战机群',       icon:'✈️', atk:5, hp:12 }, army:{ name:'巴黎禁卫师',       icon:'🪖', atk:5, hp:13 }, navy:{ name:'地中海巡航舰队', icon:'🚢', atk:4, hp:10 } },
+  ireland:     { air:{ name:'绿岛鹰队',         icon:'🦅', atk:2, hp: 6 }, army:{ name:'田园义勇军',       icon:'🪖', atk:3, hp: 8 }, navy:{ name:'渔港快帆船队',   icon:'⛵', atk:2, hp: 6 } },
+  netherlands: { air:{ name:'低地空骑',         icon:'🛩', atk:3, hp: 8 }, army:{ name:'拦海炮队',         icon:'🪖', atk:3, hp: 9 }, navy:{ name:'东印度船队',     icon:'🚢', atk:5, hp:13 } },
+  belgium:     { air:{ name:'阿登空中哨',       icon:'🛩', atk:3, hp: 7 }, army:{ name:'佛兰德步兵营',     icon:'🪖', atk:4, hp:10 }, navy:{ name:'安特卫普河防舰队', icon:'⛵', atk:2, hp: 6 } },
+  switzerland: { air:{ name:'高山缆线飞行队',   icon:'🦅', atk:2, hp: 6 }, army:{ name:'阿尔卑斯要塞守军', icon:'🪖', atk:5, hp:14 }, navy:{ name:'冰川湖上小艇',   icon:'⛵', atk:1, hp: 3 } },
+  italy:       { air:{ name:'亚平宁雄鹰',       icon:'🦅', atk:4, hp:10 }, army:{ name:'罗马百夫长步兵',   icon:'🪖', atk:5, hp:13 }, navy:{ name:'地中海舰队',     icon:'🚢', atk:5, hp:12 } },
+  denmark:     { air:{ name:'峡湾侦察机',       icon:'🛩', atk:3, hp: 7 }, army:{ name:'丹麦卫队',         icon:'🪖', atk:3, hp: 8 }, navy:{ name:'松德海峡舰队',   icon:'⛵', atk:4, hp:10 } },
+  norway:      { air:{ name:'雪岭飞行员队',     icon:'🛩', atk:3, hp: 8 }, army:{ name:'峡湾步兵营',       icon:'🪖', atk:3, hp: 9 }, navy:{ name:'维京长船舰队',   icon:'🚢', atk:5, hp:12 } },
+  sweden:      { air:{ name:'北极圈战机群',     icon:'🛩', atk:4, hp: 9 }, army:{ name:'卡尔坦克旅',       icon:'🪖', atk:5, hp:12 }, navy:{ name:'波罗的海舰队',   icon:'🚢', atk:4, hp:10 } },
+  finland:     { air:{ name:'雪地侦察鹰',       icon:'🦅', atk:3, hp: 7 }, army:{ name:'千湖狙击手团',     icon:'🪖', atk:5, hp:12 }, navy:{ name:'湖岸巡逻艇队',   icon:'⛵', atk:2, hp: 5 } },
+  poland:      { air:{ name:'维斯瓦战机',       icon:'🛩', atk:4, hp: 9 }, army:{ name:'翼骑兵师',         icon:'🪖', atk:6, hp:13 }, navy:{ name:'波罗的海岸防炮队', icon:'🏴', atk:2, hp: 5 } },
+  czech:       { air:{ name:'波西米亚战机',     icon:'🛩', atk:3, hp: 7 }, army:{ name:'铁匠突击队',       icon:'🪖', atk:4, hp:11 }, navy:{ name:'内河防务船队',   icon:'⛵', atk:1, hp: 3 } },
+  austria:     { air:{ name:'维也纳飞行队',     icon:'🛩', atk:3, hp: 8 }, army:{ name:'哈布斯堡军团',     icon:'🪖', atk:5, hp:12 }, navy:{ name:'亚得里亚小舰队', icon:'⛵', atk:2, hp: 6 } },
+  hungary:     { air:{ name:'草原侦察机',       icon:'🛩', atk:3, hp: 7 }, army:{ name:'轻骑兵军团',       icon:'🪖', atk:5, hp:11 }, navy:{ name:'多瑙河炮艇队',   icon:'⛵', atk:2, hp: 5 } },
+  ukraine:     { air:{ name:'第聂伯战机群',     icon:'🛩', atk:4, hp:10 }, army:{ name:'黑土集团军',       icon:'🪖', atk:6, hp:15 }, navy:{ name:'黑海小型舰队',   icon:'⛵', atk:3, hp: 8 } },
+  belarus:     { air:{ name:'密林直升机队',     icon:'🛩', atk:3, hp: 7 }, army:{ name:'泥沼坦克营',       icon:'🪖', atk:5, hp:12 }, navy:{ name:'河川驳船队',     icon:'⛵', atk:1, hp: 3 } },
+  jj:          { air:{ name:'联赛国防飞行队',   icon:'🛩', atk:4, hp: 9 }, army:{ name:'合金突击团',       icon:'🪖', atk:5, hp:12 }, navy:{ name:'三国联合舰队',   icon:'🚢', atk:4, hp:11 } },
+  serbia:      { air:{ name:'巴尔干战机',       icon:'🛩', atk:3, hp: 8 }, army:{ name:'巴尔干铁拳师',     icon:'🪖', atk:6, hp:13 }, navy:{ name:'亚得里亚巡逻舰队', icon:'⛵', atk:3, hp: 8 } },
+  greece:      { air:{ name:'爱琴海机队',       icon:'🛩', atk:4, hp: 9 }, army:{ name:'斯巴达重步兵',     icon:'🪖', atk:5, hp:12 }, navy:{ name:'爱琴海舰队',     icon:'🚢', atk:5, hp:13 } },
+  romania:     { air:{ name:'喀尔巴阡战机',     icon:'🛩', atk:4, hp: 9 }, army:{ name:'石油机械师',       icon:'🪖', atk:5, hp:12 }, navy:{ name:'黑海岸防舰队',   icon:'⛵', atk:3, hp: 8 } },
+  russia:      { air:{ name:'西伯利亚轰炸集群', icon:'✈️', atk:6, hp:15 }, army:{ name:'钢铁洪流装甲军',   icon:'🪖', atk:7, hp:18 }, navy:{ name:'波罗的海舰队',   icon:'🚢', atk:5, hp:13 } },
+};
+const armState = {};
+function freshArms(k) { const o = {}; ARMS_BR.forEach(b => o[b] = COUNTRY_ARMS[k][b].hp); return o; }
+function resetArms(k) { armState[k] = freshArms(k); }
+function armLeft(k, b) { if (!armState[k]) resetArms(k); return armState[k][b]; }
+function armsAlive(k) { return ARMS_BR.filter(b => armLeft(k, b) > 0); }
+function armsHP(k) { return armsAlive(k).reduce((s, b) => s + armLeft(k, b), 0); }
+function armsAtk(k) { return armsAlive(k).reduce((s, b) => s + COUNTRY_ARMS[k][b].atk, 0); }
 let armed = null;
 
 function toast(m) {
@@ -742,6 +786,7 @@ function ownerColor(o) {
 }
 function conquer(k) {
   taken[k] = gameMode === 'solo' ? 1 : turn + 1;
+  resetArms(k);
   defState[k] = baseDef(k);
   SND.conquer(STATES[k].type === 'main');
   syncMainMap();
@@ -798,8 +843,8 @@ window.addEventListener('hashchange', updateOpMode);
 updateOpMode();
 
 function diploLocked(x) {
-  // 你占领的非主国：AI 只能通过谈判买走，不能直接打掉
-  return isAIPlayer(turn) && taken[x] === 1 && STATES[x].type !== 'main';
+  // 旧「AI 填充」模式下，玩家占领的非主国 AI 只能出价买走；全欧争霸等模式可直接攻打
+  return gameMode === 'ai' && isAIPlayer(turn) && taken[x] === 1 && STATES[x].type !== 'main';
 }
 function fireAt(k) {
   if (!armed || gameOver) return false;
@@ -813,7 +858,6 @@ function fireAt(k) {
   const u = armed;
   const it = ITEMS[u.k];
   const mineNum = gameMode === 'solo' ? 1 : turn + 1;
-  const before = Math.max(0, defOf(k));
   const isCrit = Math.random() < ((it.crit || 0) + critBonus) / 100;
   let per = it.atk + atkBonus;
   if (isCrit) per *= 2;
@@ -821,20 +865,77 @@ function fireAt(k) {
   const dom = it.dom || 'army';
   const domPct = domBonusPct(myCountry, dom);
   const dmg = Math.max(1, Math.round(per * shots * (1 + domPct / 100)));
-  defState[k] = Math.max(0, defState[k] - dmg);
   let msg = it.name + (shots > 1 ? ' ×' + shots + ' 连射' : '') + ' 命中 ' + st.name +
-    '：驻防 ' + before + ' → ' + Math.max(0, defOf(k)) + (isCrit ? '（暴击！）' : '') +
+    (isCrit ? '（暴击！）' : '') +
     (domPct ? '（' + DOM_CN[dom] + '系 ' + (domPct > 0 ? '+' : '') + domPct + '%）' : '');
+  if (armsAlive(k).length) {
+    // 军备未清零：火力只能打武器，无法触及总部
+    let d = dmg;
+    const hitParts = [];
+    armsAlive(k).forEach(b => {
+      if (d <= 0) return;
+      const cur = armLeft(k, b);
+      const hit = Math.min(cur, d);
+      if (hit > 0) {
+        armState[k][b] = cur - hit;
+        d -= hit;
+        hitParts.push(ARMS_CN[b] + '-' + hit);
+      }
+    });
+    msg += '，直袭军备（' + (hitParts.length ? hitParts.join(' · ') : '无伤') + '）';
+    if (d > 0) msg += '，剩余火力 ' + d + ' 被防线吞没';
+    const surv = armsAlive(k);
+    if (!surv.length) msg += '，' + st.name + ' 军备尽毁！';
+    if (surv.length) {
+      const ret = surv.reduce((s, b) => s + COUNTRY_ARMS[k][b].atk, 0);
+      u.hp -= ret;
+      msg += '，' + st.name + ' 存活武器反击 -' + ret;
+      if (u.hp <= 0) {
+        msg += '（' + it.name + ' 被击毁）';
+        const arr = deployed[u.k] || [];
+        const idx = arr.indexOf(u);
+        if (idx >= 0) arr.splice(idx, 1);
+      }
+    }
+  } else {
+    // 军备已清空：火力直奔总部防线
+    const before = Math.max(0, defOf(k));
+    defState[k] = Math.max(0, defState[k] - dmg);
+    msg += '：总部防线 ' + before + ' → ' + Math.max(0, defOf(k));
+    if (defState[k] <= 0 && taken[k] !== mineNum) {
+      const bonus = st.type === 'main' ? 1200 : 400;
+      money += bonus;
+      msg += '，' + st.name + (taken[k] ? ' 易主！' : ' 被攻克！') + '奖励 ¥' + bonus;
+      conquer(k);
+    }
+  }
   if (it.splash) {
     const pool = Object.keys(STATES).filter(x => x !== myCountry && x !== k && taken[x] !== mineNum && !diploLocked(x));
     const hits = Math.min(2, pool.length);
     for (let i = 0; i < hits; i++) {
       const tk = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       const sd = Math.max(1, Math.round(dmg * it.splash));
-      defState[tk] = Math.max(0, defState[tk] - sd);
       SND.splash();
-      msg += '，溅射 ' + STATES[tk].name + ' -' + sd;
-      if (defState[tk] <= 0 && taken[tk] !== mineNum) {
+      let spMsg = '溅射 ' + STATES[tk].name;
+      if (armsAlive(tk).length) {
+        let d2 = sd;
+        armsAlive(tk).forEach(b => {
+          if (d2 <= 0) return;
+          const cur = armLeft(tk, b);
+          const hit = Math.min(cur, d2);
+          if (hit > 0) {
+            armState[tk][b] = cur - hit;
+            d2 -= hit;
+          }
+        });
+        spMsg += ' 军备 -' + sd;
+      } else {
+        const before = Math.max(0, defOf(tk));
+        defState[tk] = Math.max(0, defState[tk] - sd);
+        spMsg += ' 总部 ' + before + ' → ' + Math.max(0, defOf(tk));
+      }
+      msg += '，' + spMsg;
+      if (!armsAlive(tk).length && defState[tk] <= 0 && taken[tk] !== mineNum) {
         const sb = STATES[tk].type === 'main' ? 1200 : 400;
         money += sb;
         msg += '（' + STATES[tk].name + ' 被攻克！+¥' + sb + '）';
@@ -847,12 +948,6 @@ function fireAt(k) {
     money += gold;
     SND.loot();
     msg += '，缴获 ¥' + gold;
-  }
-  if (defState[k] <= 0 && taken[k] !== mineNum) {
-    const bonus = st.type === 'main' ? 1200 : 400;
-    money += bonus;
-    msg += '，' + st.name + (taken[k] ? ' 易主！' : ' 被攻克！') + '奖励 ¥' + bonus;
-    conquer(k);
   }
   u.lastShot = inGameDay;
   SND.fire(it.atk, dom, isCrit);
@@ -878,6 +973,7 @@ document.querySelectorAll('.chip').forEach(c => {
 const TURN_SEC = 30;
 const MODE_N = { solo: 1, duo: 2, trio: 3 };
 const PLAYER_COLORS = ['#ffc76b', '#7fe3f7', '#a8c2ff'];
+function pColor(i) { return PLAYER_COLORS[i] || PLAYER_COLORS[i % PLAYER_COLORS.length]; }
 let gameMode = 'menu';        // menu | solo | duo | trio | ai
 let nPlayers = 1;             // 本局玩家数
 let nAIs = 1;                 // AI 模式下的 AI 数量（最多 2）
@@ -1042,7 +1138,7 @@ function landIncome() {
   if (!mine) return 0;
   let s = 0;
   for (const k in taken) {
-    if (taken[k] === mine && STATES[k] && STATES[k].inc && STATES[k].type === 'vassal') s += STATES[k].inc;
+    if (taken[k] === mine && STATES[k] && STATES[k].inc) s += STATES[k].inc;
   }
   return s;
 }
@@ -1243,6 +1339,7 @@ function resetWorld() {
   for (let i = 0; i < nPlayers; i++) players.push(newPlayer(i));
   turn = 0; gameOver = false; pickIdx = 0;
   Object.keys(defState).forEach(k => delete defState[k]);
+  Object.keys(armState).forEach(k => delete armState[k]);
   Object.keys(STATES).forEach(k => {
     taken[k] = 0;
     const p = landG.querySelector('[data-k="' + k + '"]');
@@ -1289,7 +1386,7 @@ function eliminate(i, by) {
   p.outLand = countLand(i + 1);
   DEPLOYABLE.forEach(k => { if (p.deployed[k]) p.deployed[k].length = 0; });
   Object.keys(taken).forEach(k => {
-    if (taken[k] === i + 1) { taken[k] = 0; defState[k] = baseDef(k); }
+    if (taken[k] === i + 1) { taken[k] = 0; defState[k] = baseDef(k); resetArms(k); }
   });
   if (p.isAI) aiRunId++;
   if (tradeWait) { tradeWait = false; document.getElementById('tradeOv').classList.add('hidden'); }
@@ -1341,7 +1438,7 @@ function checkWin() {
 function finishGame(winner, reason) {
   gameOver = true;
   // 胜负音效：联机按自己的座位判定；AI 模式只有 P1 是人类；duo/trio 全部席位都是人类
-  const humanSeat = netIsOnline() ? NET.seat : (gameMode === 'ai' ? 0 : -2);
+  const humanSeat = netIsOnline() ? NET.seat : (gameMode === 'ai' || gameMode === 'dom' ? 0 : -2);
   if (humanSeat === -2) { if (winner >= 0) SND.win(); }
   else if (winner === humanSeat) SND.win(); else SND.lose();
   if (netIsOnline()) { NET.last = { w: winner, r: reason }; NET.endShown = true; }
@@ -1357,7 +1454,7 @@ function finishGame(winner, reason) {
     title.style.color = '#ffd166';
   } else {
     const w = players[winner];
-    title.innerHTML = '<span style="color:' + PLAYER_COLORS[winner] + '">P' + (winner + 1) + ' · ' +
+    title.innerHTML = '<span style="color:' + pColor(winner) + '">P' + (winner + 1) + ' · ' +
       STATES[w.country].name + ' 胜利</span>';
     title.style.color = STATES[w.country].color;
   }
@@ -1389,7 +1486,7 @@ function renderPlayerInfo() {
     const col = p.country ? STATES[p.country].color : '#5c7088';
     return '<div class="pl' + (i === turn && !gameOver ? ' act' : '') + '">' +
       '<span class="dotc" style="background:' + col + '"></span>' +
-      '<b style="color:' + PLAYER_COLORS[i] + '">P' + (i + 1) + '</b> ' +
+      '<b style="color:' + pColor(i) + '">P' + (i + 1) + '</b> ' +
       (p.country ? STATES[p.country].name : '未选择') +
       (p.isAI ? ' <em class="aitag">AI ' + p.aiLv + '</em>' :
         (netIsOnline() ? ' <em class="aitag">' + playerTag(i) + '</em>' : '')) +
@@ -1425,7 +1522,7 @@ function updateTurnUI() {
   document.getElementById('endTurn').disabled = aiTurn || !myTurn;
   tag.textContent = 'P' + (turn + 1) + ' 回合' + (p && p.country ? ' · ' + STATES[p.country].name : '') +
     (aiTurn ? ' · AI 行动中' : (netIsOnline() ? (myTurn ? ' · 轮到你' : ' · ' + playerTag(turn) + ' 行动中') : ''));
-  tag.style.color = p && p.country ? STATES[p.country].color : PLAYER_COLORS[turn];
+  tag.style.color = p && p.country ? STATES[p.country].color : pColor(turn);
   tm.textContent = turnLeft + 's';
   tm.classList.toggle('urgent', turnLeft <= 5);
 }
@@ -1567,7 +1664,7 @@ function aiBuy(t) {
   return best ? buyItem(best.key) : false;
 }
 function aiPlace(k) {
-  const b = bboxOf(DEPREGION[myCountry] || myCountry);
+  const b = deployRegionOf(myCountry);
   for (let t = 0; t < 60; t++) {
     const x = b[0] + Math.random() * (b[2] - b[0]);
     const y = b[1] + Math.random() * (b[3] - b[1]);
@@ -1617,7 +1714,7 @@ function aiPickTarget(t) {
   let best = null, bestS = -1;
   cands.forEach(k => {
     const st = STATES[k];
-    let s = 100 / (Math.max(0, defOf(k)) + 4);
+    let s = 100 / (Math.max(0, defOf(k)) + armsHP(k) * 0.35 + 5);
     s *= taken[k] ? 1.25 : 1.0;
     if (st.type === 'main') s *= 1 + 2.2 * t.focus;
     s *= 0.7 + Math.random() * 0.6;
@@ -1665,6 +1762,7 @@ function doTrade(k, price) {
   money -= price;
   players[0].money += price;
   taken[k] = turn + 1;
+  resetArms(k);
   defState[k] = baseDef(k);
   tradeCool[k] = inGameDay;
   syncMainMap();
@@ -1832,7 +1930,6 @@ document.getElementById('shopOv').addEventListener('click', e => {
 
 const ns = 'http://www.w3.org/2000/svg';
 const DEPLOYABLE = Object.keys(ITEMS).filter(k => ITEMS[k].unit);
-const DEPREGION = { turkey: 'turkey', germany: 'germany', uk: 'uk' };
 let deployed = freshDeployed();
 let placing = null;
 let selFire = null;
@@ -1851,18 +1948,21 @@ function bboxOf(k) {
   }
   return [minx, miny, maxx, maxy];
 }
+// 任意国家都可作为部署区域；小国会自动扩充到最小尺寸，避免放不下单位
+function deployRegionOf(k) {
+  const b = bboxOf(k);
+  const w = b[2] - b[0], h = b[3] - b[1];
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  const rw = Math.max(w * 1.6, 2.6);
+  const rh = Math.max(h * 1.6, 2.2);
+  return [cx - rw / 2, cy - rh / 2, cx + rw / 2, cy + rh / 2];
+}
 function remainingOf(k) {
   return own[k] - (k === 'torpedo' ? deployed.torpedo.length : deployed[k].length);
 }
 function openDeploy() {
-  if (!myCountry || !DEPREGION[myCountry]) return;
-  const b = bboxOf(DEPREGION[myCountry]);
-  let bbox = b;
-  if (myCountry === 'uk') {
-    const w = b[2] - b[0], h = b[3] - b[1], cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-    const rad = Math.max(w, h) * 1.15;
-    bbox = [cx - rad, cy - rad * 0.9, cx + rad, cy + rad * 0.9];
-  }
+  if (!myCountry) return;
+  const bbox = deployRegionOf(myCountry);
   const bw = bbox[2] - bbox[0], bh = bbox[3] - bbox[1], pad = Math.max(bw, bh) * 0.15;
   const vb = [bbox[0] - pad, bbox[1] - pad, bw + 2 * pad, bh + 2 * pad];
   const dmap = document.getElementById('depMap');
@@ -2108,18 +2208,32 @@ document.getElementById('depFire').addEventListener('click', () => {
   depInfo.textContent = '';
 });
 
+function renderPickChoices(usedList) {
+  const box = document.getElementById('pickChoices');
+  box.innerHTML = ORDER.map(k => {
+    const s = STATES[k];
+    if (!s) return '';
+    const dis = usedList.indexOf(k) >= 0;
+    return '<button class="pick' + (dis ? ' dis' : '') + '" data-k="' + k +
+      '" style="color:' + s.color + ';border-color:' + s.color + '">' + s.name + '</button>';
+  }).join('');
+}
 function showPickFor(i) {
   pickIdx = i;
   document.getElementById('pickTitle').textContent = 'P' + (i + 1) + ' 选择主国';
   document.getElementById('pickSub').textContent = i === 0
-    ? '先手 · 土耳其 / 德国 / 英国 任选其一'
+    ? '先手 · 从 26 国中任选其一作为你的主国'
     : '第 ' + (i + 1) + ' 位 · 不可与其他玩家选到相同的主国';
   document.getElementById('pickBack').classList.toggle('hidden', i === 0);
   const used = players.filter((x, j) => j !== i && x.country).map(x => x.country);
-  document.querySelectorAll('.pick').forEach(b => {
-    b.classList.toggle('dis', used.indexOf(b.getAttribute('data-k')) >= 0);
-  });
+  renderPickChoices(used);
   document.getElementById('startOv').classList.remove('hidden');
+}
+function setChoicesEnabled(on) {
+  document.querySelectorAll('#pickChoices .pick').forEach(b => {
+    b.disabled = !on;
+    b.style.opacity = on ? '' : '0.4';
+  });
 }
 function chooseCountry(k, forSeat) {
   const who = (forSeat === undefined || forSeat === null) ? NET.seat : forSeat;
@@ -2128,9 +2242,24 @@ function chooseCountry(k, forSeat) {
     startGame(0);
     return;
   }
+  if (gameMode === 'dom') {
+    players[0].country = k;
+    const rest = ORDER.filter(c => c !== k);
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
+    }
+    for (let i = 1; i < nPlayers; i++) {
+      players[i].country = rest[i - 1];
+      players[i].isAI = true;
+      players[i].aiLv = aiDiff;
+    }
+    startGame(0);
+    return;
+  }
   if (gameMode === 'ai') {
     players[0].country = k;
-    const rest = MAINS.filter(m => m !== k);
+    const rest = ORDER.filter(m => m !== k);
     for (let i = rest.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = rest[i]; rest[i] = rest[j]; rest[j] = tmp;
@@ -2175,9 +2304,9 @@ document.getElementById('btnSolo').addEventListener('click', () => {
   resetWorld();
   document.getElementById('modeOv').classList.add('hidden');
   document.getElementById('pickTitle').textContent = '选择初始国';
-  document.getElementById('pickSub').textContent = '三大主国，各有所长，随你统领';
+  document.getElementById('pickSub').textContent = '26 国任选其一，作为你的主国';
   document.getElementById('pickBack').classList.add('hidden');
-  document.querySelectorAll('.pick').forEach(b => b.classList.remove('dis'));
+  renderPickChoices([]);
   document.getElementById('startOv').classList.remove('hidden');
 });
 document.getElementById('btnDuo').addEventListener('click', () => {
@@ -2194,11 +2323,29 @@ document.getElementById('btnTrio').addEventListener('click', () => {
   document.getElementById('modeOv').classList.add('hidden');
   showPickFor(0);
 });
+let aiFlow = 'ai';
+function readAiDiff() {
+  const onD = document.querySelector('#aiDiffSeg button.on');
+  return onD ? parseInt(onD.getAttribute('data-d'), 10) : 3;
+}
 document.getElementById('btnAI').addEventListener('click', () => {
+  aiFlow = 'ai';
   const on = document.querySelector('#aiCountSeg button.on');
   nAIs = on ? parseInt(on.getAttribute('data-n'), 10) : 1;
-  const onD = document.querySelector('#aiDiffSeg button.on');
-  aiDiff = onD ? parseInt(onD.getAttribute('data-d'), 10) : 3;
+  aiDiff = readAiDiff();
+  document.getElementById('aiOvTitle').textContent = 'AI 对决';
+  document.getElementById('aiOvDesc').textContent = '你担任 P1，AI 接管其余国家。AI 会购买商品、部署部队并进攻。';
+  document.getElementById('aiCountRow').classList.remove('hidden');
+  document.getElementById('aiDiffHint').textContent = AI_DIFF_HINT[aiDiff];
+  document.getElementById('aiOv').classList.remove('hidden');
+});
+document.getElementById('btnDom').addEventListener('click', () => {
+  aiFlow = 'dom';
+  aiDiff = readAiDiff();
+  document.getElementById('aiOvTitle').textContent = '全欧争霸';
+  document.getElementById('aiOvDesc').textContent = '26 国逐鹿欧洲：选择你的主国，其余 25 国全部由 AI（难度 ' + aiDiff +
+    '）接管。攻灭一国，必须先打光它的三军军备，才能捣毁总部。';
+  document.getElementById('aiCountRow').classList.add('hidden');
   document.getElementById('aiDiffHint').textContent = AI_DIFF_HINT[aiDiff];
   document.getElementById('aiOv').classList.remove('hidden');
 });
@@ -2218,12 +2365,25 @@ document.querySelectorAll('#aiDiffSeg button').forEach(b => {
   });
 });
 document.getElementById('aiStart').addEventListener('click', () => {
+  aiDiff = readAiDiff();
+  document.getElementById('aiOv').classList.add('hidden');
+  document.getElementById('modeOv').classList.add('hidden');
+  if (aiFlow === 'dom') {
+    gameMode = 'dom';
+    nPlayers = ORDER.length;
+    resetWorld();
+    for (let i = 1; i < nPlayers; i++) { players[i].isAI = true; players[i].aiLv = aiDiff; }
+    document.getElementById('pickTitle').textContent = '选择你的主国';
+    document.getElementById('pickSub').textContent = '26 国任你统领，其余 25 国由 AI（难度 ' + aiDiff + '）接管，胜者为王';
+    document.getElementById('pickBack').classList.add('hidden');
+    renderPickChoices([]);
+    document.getElementById('startOv').classList.remove('hidden');
+    return;
+  }
   gameMode = 'ai';
   nPlayers = Math.min(3, nAIs + 1);
   resetWorld();
   for (let i = 1; i < nPlayers; i++) { players[i].isAI = true; players[i].aiLv = aiDiff; }
-  document.getElementById('aiOv').classList.add('hidden');
-  document.getElementById('modeOv').classList.add('hidden');
   showPickFor(0);
   document.getElementById('pickSub').textContent = '你选择主国，其余 ' + nAIs + ' 国由 AI（难度 ' + aiDiff + '）接管';
 });
@@ -2246,17 +2406,16 @@ document.getElementById('againBtn').addEventListener('click', () => {
   }
   location.reload();
 });
-document.querySelectorAll('#startOv .pick[data-k]').forEach(b => {
-  b.addEventListener('click', () => {
-    const k = b.getAttribute('data-k');
-    if (!k) return;
-    if (b.classList.contains('dis')) {
-      toast('该主国已被其他玩家选走，请换一个');
-      return;
-    }
-    if (gameMode === 'menu') return;
-    chooseCountry(k);
-  });
+document.getElementById('pickChoices').addEventListener('click', e => {
+  const b = e.target.closest('.pick');
+  if (!b || gameMode === 'menu') return;
+  const k = b.getAttribute('data-k');
+  if (!k) return;
+  if (b.classList.contains('dis')) {
+    toast('该主国已被其他玩家选走，请换一个');
+    return;
+  }
+  chooseCountry(k);
 });
 
 /* ===================== 联机模式（P2P：创建者 = 房主，无需服务器） ===================== */
@@ -2313,10 +2472,13 @@ function netObj(o) { const r = {}; Object.keys(o || {}).forEach(k => { r[k] = o[
 // deployed 是 { 兵种: [单位...] }，数组也要各拷一份，避免快照和真实状态共用同一批数组
 function netDep(d) { const r = {}; Object.keys(d || {}).forEach(k => { r[k] = (d[k] || []).slice(); }); return r; }
 function netSnap() {
+  const arms = {};
+  Object.keys(armState).forEach(k => { arms[k] = netObj(armState[k]); });
   return {
     n: nPlayers, day: inGameDay, turn: turn, left: turnLeft,
     over: gameOver, pick: NET.phase === 'pick' ? pickIdx : -1,
     taken: netObj(taken), def: netObj(defState), gb: netObj(goldBought), ob: netObj(onceBought), win: NET.last,
+    arms: arms,
     ps: players.map(p => ({
       c: p.country, m: p.money, own: netObj(p.own), v: netObj(p.vOwn), d: netDep(p.deployed),
       ib: p.incomeBonus, ab: p.atkBonus, cb: p.critBonus, rb: p.regenBonus, sb: p.salvageBonus,
@@ -2333,13 +2495,10 @@ function netGatePick() {
   const mine = pickIdx === NET.seat;
   document.getElementById('pickTitle').textContent = 'P' + (pickIdx + 1) + ' 选择主国';
   document.getElementById('pickSub').textContent = mine
-    ? (pickIdx === 0 ? '轮到你（先手）· 土耳其 / 德国 / 英国 任选其一' : '轮到你 · 不可与其他玩家选到相同的主国')
+    ? (pickIdx === 0 ? '轮到你（先手）· 从 26 国中任选其一' : '轮到你 · 不可与其他玩家选到相同的主国')
     : '等待 P' + (pickIdx + 1) + ' 选择主国…';
   document.getElementById('pickBack').classList.add('hidden');
-  document.querySelectorAll('#startOv .pick[data-k]').forEach(b => {
-    b.disabled = !mine;
-    b.style.opacity = mine ? '' : '0.4';
-  });
+  setChoicesEnabled(mine);
 }
 function netShowPick(i) { showPickFor(i); netGatePick(); }
 function netGate() { if (netIsOnline()) aiLockUI(!netMyTurn()); }
@@ -2358,6 +2517,8 @@ function netApplySnap(s) {
   netCopy(defState, s.def);
   netCopy(goldBought, s.gb);
   netCopy(onceBought, s.ob);
+  Object.keys(armState).forEach(k => delete armState[k]);
+  Object.keys(s.arms || {}).forEach(k => { armState[k] = netObj(s.arms[k]); });
   players.length = 0;
   for (let i = 0; i < s.ps.length; i++) {
     const d = s.ps[i], p = newPlayer(i);
@@ -2462,7 +2623,7 @@ function netRenderRoom() {
   let h = '';
   for (let i = 0; i < r.size; i++) {
     const s = r.seats[i], mine = i === NET.seat;
-    h += '<div class="onseat' + (s ? ' on' : '') + '"><b style="color:' + PLAYER_COLORS[i] + '">P' + (i + 1) + '</b>' +
+    h += '<div class="onseat' + (s ? ' on' : '') + '"><b style="color:' + pColor(i) + '">P' + (i + 1) + '</b>' +
       (s ? ((s.name || ('玩家' + (i + 1))) + (mine ? '（你）' : '') + (i === 0 ? ' · 房主' : '')) : '等待中…') + '</div>';
   }
   box.innerHTML = h;
