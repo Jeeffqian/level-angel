@@ -603,6 +603,116 @@ html, body {
 /* hinted continent: everything else fades back */
 .country.is-dim { opacity: .28; }
 
+/* ── Blitz clock ──────────────────────────────────────────── */
+.blitz {
+  min-width: 116px;
+  padding: 6px 12px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  transition: border-color .2s;
+}
+.blitz-row { display: flex; align-items: baseline; gap: 5px; }
+.blitz-v {
+  font-size: 17px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  transition: color .2s;
+}
+.blitz-k { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); }
+.blitz-track {
+  height: 4px; margin-top: 5px;
+  background: var(--line-soft);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.blitz-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--accent), #60a5fa);
+  border-radius: 99px;
+}
+.blitz.low { animation: blitzPulse .85s ease-in-out infinite; }
+.blitz.low .blitz-v { color: var(--no); }
+.blitz.low .blitz-fill { background: linear-gradient(90deg, var(--no), #f87171); }
+@keyframes blitzPulse {
+  0%, 100% { border-color: var(--line-soft); }
+  50%      { border-color: #fca5a5; }
+}
+
+/* ── Quiz modes (multiple choice) ─────────────────────────── */
+.quiz-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.quiz-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, transform .08s;
+}
+.quiz-opt:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-sf); }
+.quiz-opt:active:not(:disabled) { transform: scale(.97); }
+.quiz-opt:disabled { cursor: default; opacity: .72; }
+
+.quiz-options.as-flags .quiz-opt { padding: 8px; }
+.quiz-options.as-flags .quiz-opt img {
+  width: 100%;
+  height: 52px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(16, 32, 52, .14);
+}
+.quiz-options.as-names .quiz-opt { align-items: flex-start; text-align: left; padding: 10px 12px; }
+.quiz-opt .qo-en { font-size: 13px; font-weight: 650; line-height: 1.25; }
+.quiz-opt .qo-zh { font-size: 10.5px; color: var(--ink-3); }
+
+.quiz-opt.is-answer {
+  border-color: var(--ok);
+  background: #dcfce7;
+  box-shadow: inset 0 0 0 1px var(--ok);
+  opacity: 1;
+}
+.quiz-opt.is-picked-wrong {
+  border-color: var(--no);
+  background: #fee2e2;
+  box-shadow: inset 0 0 0 1px var(--no);
+  opacity: 1;
+}
+
+/* quiz chrome: the map is a read-only backdrop, the panel does the work */
+.app.mode-quiz .flag-card { display: none; }
+.app.mode-quiz .task-card { flex: 1 1 auto; }
+.app.mode-quiz #map      { pointer-events: none; cursor: default; }
+
+.quiz-badge {
+  position: absolute;
+  left: 50%; top: 14px;
+  transform: translateX(-50%);
+  padding: 7px 15px;
+  font-size: 12px; font-weight: 650;
+  color: var(--accent);
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid #c7dbff;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(16, 32, 52, .1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* ── Learn / study mode ───────────────────────────────────── */
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .mode-btn { padding: 9px 15px; font-size: 12.5px; white-space: nowrap; }

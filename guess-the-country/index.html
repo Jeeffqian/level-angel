@@ -22,6 +22,10 @@
     </div>
 
     <div class="topbar-right">
+      <div class="blitz" id="blitzTimer" hidden>
+        <div class="blitz-row"><span class="blitz-v" id="blitzLeft">60</span><span class="blitz-k">sec left</span></div>
+        <div class="blitz-track"><div class="blitz-fill" id="blitzFill"></div></div>
+      </div>
       <div class="stats" id="stats">
         <div class="stat"><span class="stat-v" id="statScore">0</span><span class="stat-k">Score</span></div>
         <div class="stat"><span class="stat-v" id="statRound">–</span><span class="stat-k">Round</span></div>
@@ -54,6 +58,8 @@
       </div>
 
       <div class="toast" id="toast" aria-live="polite"></div>
+
+      <div class="quiz-badge" id="quizBadge" hidden>Quiz mode — answer in the panel →</div>
 
       <!-- Start / result overlay -->
       <div class="overlay" id="overlay">
@@ -112,6 +118,10 @@
         <div class="task-name" id="taskName">Press Start</div>
         <div class="task-zh" id="taskZh"></div>
         <div class="task-hint" id="taskHint"></div>
+
+        <!-- four-way choices, used by the flag / country quiz modes -->
+        <div class="quiz-options" id="quizOptions" hidden></div>
+
         <div class="task-actions">
           <button class="btn ghost" id="btnHint" disabled>💡 Hint · 15s ad</button>
           <button class="btn ghost" id="btnSkip" disabled>⏭ Skip</button>

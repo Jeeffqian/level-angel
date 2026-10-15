@@ -60,14 +60,23 @@
   const learnCount  = $('learnCount');
   const flagFacts   = $('flagFacts');
 
+  const quizOptionsEl = $('quizOptions');
+  const quizBadge     = $('quizBadge');
+  const blitzTimer    = $('blitzTimer');
+  const blitzLeft     = $('blitzLeft');
+  const blitzFill     = $('blitzFill');
+
   const AD_SECONDS = 15;
 
   /* ── State ───────────────────────────────────────────── */
   const state = {
     mode: 'game',            // 'game' | 'learn'
-    clue: 'name',            // 'name' → the country name is given | 'flag' → the flag is given
+    clue: 'name',            // 'name' | 'flag'  → click the map
+                             // 'flagQuiz' | 'countryQuiz' → pick 1 of 4 options
+    format: 'classic',       // 'classic' → fixed rounds | 'blitz' → 60-second survival
     difficulty: 'normal',    // 'easy' | 'normal' | 'hard'
-    rounds: 20,              // 0 = endless
+    rounds: 20,              // 0 = endless (ignored in blitz)
+    blitzSeconds: 60,        // blitz run length
     namesOnHover: true,
 
     running: false,
@@ -85,7 +94,8 @@
     queue: [],
     missed: [],
     hovered: null,
-    pinned: null
+    pinned: null,
+    deadline: 0             // blitz only: performance.now() ms at which time runs out
   };
 
   const DIFF = {
@@ -93,6 +103,25 @@
     normal: { minArea: 90000,  label: 'Normal' },
     hard:   { minArea: 0,      label: 'Hard' }
   };
+
+  /* The two multiple-choice clues. They reuse the same rounds, scoring and
+     hint plumbing as the map clues — only the way you answer changes. */
+  const QUIZ_CLUES = { flagQuiz: true, countryQuiz: true };
+  const isQuiz = () => !!QUIZ_CLUES[state.clue];
+
+  const CLUE_LABEL = {
+    name: 'Name clue', flag: 'Flag clue',
+    flagQuiz: 'Flag quiz', countryQuiz: 'Country quiz'
+  };
+  const CLUE_DESC = {
+    name: 'A <b>country name</b> appears on the right. Find it on the map and click it.',
+    flag: 'A <b>flag</b> appears on the right. Click the country it belongs to.',
+    flagQuiz: 'A <b>country name</b> appears on the right. Pick its <b>flag</b> from four choices.',
+    countryQuiz: 'A <b>flag</b> appears on the right. Pick the <b>country</b> it belongs to from four choices.'
+  };
+
+  /* Blitz ignores the round limit — the clock is the limit. */
+  const roundsLimit = () => state.format === 'blitz' ? 0 : state.rounds;
 
   /* Learn mode state */
   const CONTINENTS = ['all', 'Africa', 'Asia', 'Europe', 'North America',
@@ -129,36 +158,57 @@
   const escapeHtml = s => String(s).replace(/[&<>"]/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /* Best score is tracked per difficulty *and* per clue, so a flag run is never
-     compared against a name run. The name key stays as it always was. */
-  const bestKey = d => 'wmg.best.' + d + (state.clue === 'flag' ? '.flag' : '');
-  const clueLabel = () => state.clue === 'flag' ? 'Flag clue' : 'Name clue';
+  /* Best score is tracked per difficulty, clue *and* format, so a flag quiz is
+     never compared against a map run and blitz never against classic.
+     The plain name/classic key stays exactly as it always was. */
+  const bestKey = d => 'wmg.best.' + d
+    + (state.clue === 'name' ? '' : '.' + state.clue)
+    + (state.format === 'blitz' ? '.blitz' : '');
+  const clueLabel = () => CLUE_LABEL[state.clue] || 'Name clue';
+  const fmtLabel  = () => state.format === 'blitz' ? 'Blitz' : 'Classic';
 
-  /* The round prompt: either the country's name, or its flag. */
+  /* The round prompt: the country's name, its flag, or a four-way choice. */
   function renderPrompt(key) {
     const m = META[key];
-    const flagClue = state.clue === 'flag';
+    const c = state.clue;
+    const flagClue = c === 'flag' || c === 'countryQuiz';
 
-    taskLabel.textContent = flagClue
-      ? 'Find the country with this flag'
-      : 'Find this country';
-
+    // the flag is the question in "flag" and "countryQuiz"
     taskFlag.hidden = !flagClue;
     if (flagClue) {
       taskFlagImg.src = flagUrl(m.c);
       taskFlagImg.alt = 'Flag to identify';
     }
 
-    // in flag mode the name is the answer, so it stays hidden until you answer
-    taskName.textContent = flagClue ? '' : m.n;
-    taskZh.textContent   = flagClue ? '' : m.zh;
+    if (c === 'flag') {
+      taskLabel.textContent = 'Find the country with this flag';
+      taskName.textContent = '';          // the name is the answer
+      taskZh.textContent   = '';
+    } else if (c === 'flagQuiz') {
+      taskLabel.textContent = 'Pick the flag of this country';
+      taskName.textContent = m.n;
+      taskZh.textContent   = m.zh;
+    } else if (c === 'countryQuiz') {
+      taskLabel.textContent = 'Which country has this flag?';
+      taskName.textContent = '';          // the name is the answer
+      taskZh.textContent   = '';
+    } else {
+      taskLabel.textContent = 'Find this country';
+      taskName.textContent = m.n;
+      taskZh.textContent   = m.zh;
+    }
+
+    if (isQuiz()) renderQuizOptions(key);
+    else clearQuizOptions();
   }
 
-  /* Once a flag round is answered, put the name back so you actually learn it. */
+  /* Once a round is answered, put the name back so you actually learn it. */
   function revealAnswerName(answer) {
-    if (state.clue !== 'flag' || !answer) return;
-    taskName.textContent = answer.n;
-    taskZh.textContent   = answer.zh;
+    if (!answer) return;
+    if (state.clue === 'flag' || state.clue === 'countryQuiz') {
+      taskName.textContent = answer.n;
+      taskZh.textContent   = answer.zh;
+    }
   }
 
   /* ── Map setup ───────────────────────────────────────── */
@@ -333,6 +383,74 @@
     flagFacts.hidden = true;
   }
 
+  /* ── Quiz options (multiple-choice clues) ────────────────
+     Distractors are drawn from the same continent first, so the four choices
+     are genuinely hard to tell apart — that is where the learning happens. */
+  function quizOptions(targetKey) {
+    const t = META[targetKey];
+    const rest = state.pool.filter(k => k !== targetKey);
+    const sameContinent = shuffle(rest.filter(k => META[k].k === t.k));
+    const elsewhere     = shuffle(rest.filter(k => META[k].k !== t.k));
+    const picks = [...sameContinent, ...elsewhere].slice(0, 3);
+    return shuffle([targetKey, ...picks]);
+  }
+
+  function clearQuizOptions() {
+    if (!quizOptionsEl) return;
+    quizOptionsEl.hidden = true;
+    quizOptionsEl.innerHTML = '';
+  }
+
+  function renderQuizOptions(targetKey) {
+    const c = state.clue;
+    quizOptionsEl.hidden = false;
+    quizOptionsEl.className = 'quiz-options ' + (c === 'flagQuiz' ? 'as-flags' : 'as-names');
+    quizOptionsEl.innerHTML = '';
+
+    quizOptions(targetKey).forEach(k => {
+      const m = META[k];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'quiz-opt';
+      b.dataset.k = k;
+
+      if (c === 'flagQuiz') {
+        const img = document.createElement('img');
+        img.src = flagUrl(m.c);
+        img.alt = 'Flag option';
+        b.appendChild(img);
+      } else {
+        const en = document.createElement('span');
+        en.className = 'qo-en';
+        en.textContent = m.n;
+        const zh = document.createElement('span');
+        zh.className = 'qo-zh';
+        zh.textContent = m.zh;
+        b.append(en, zh);
+      }
+
+      b.addEventListener('click', () => answer(k));
+      quizOptionsEl.appendChild(b);
+    });
+  }
+
+  /* Colour the options once the round is over: green for the truth, red for a miss. */
+  function markQuizOptions(pickedKey) {
+    if (!isQuiz() || !quizOptionsEl) return;
+    quizOptionsEl.querySelectorAll('.quiz-opt').forEach(b => {
+      b.disabled = true;
+      if (b.dataset.k === state.target) b.classList.add('is-answer');
+      else if (b.dataset.k === pickedKey) b.classList.add('is-picked-wrong');
+    });
+  }
+
+  /* Quiz modes answer from the panel, so the map goes read-only. */
+  function applyQuizChrome() {
+    const on = isQuiz() && state.mode === 'game' && state.running;
+    document.querySelector('.app').classList.toggle('mode-quiz', on);
+    if (quizBadge) quizBadge.hidden = !on;
+  }
+
   /* ── Game flow ───────────────────────────────────────── */
   function buildPool() {
     const min = DIFF[state.difficulty].minArea;
@@ -380,9 +498,43 @@
     zoomLayer.selectAll('path.country').classed('is-pinned', false);
     resetView(0);
     logEl.innerHTML = '';
-    updateStats();
     hideOverlay();
+
+    stopBlitz();
+    applyQuizChrome();
+    updateStats();
+    if (state.format === 'blitz') startBlitz();
     nextRound();
+  }
+
+  /* ── Blitz: a single countdown replaces the round limit ── */
+  let blitzTick = null;
+
+  function startBlitz() {
+    state.deadline = performance.now() + state.blitzSeconds * 1000;
+    blitzTimer.hidden = false;
+    tickBlitz();
+    blitzTick = setInterval(tickBlitz, 100);
+  }
+
+  function tickBlitz() {
+    if (state.format !== 'blitz' || !state.running) return stopBlitz();
+
+    const left = Math.max(0, (state.deadline - performance.now()) / 1000);
+    blitzLeft.textContent = Math.ceil(left);
+    blitzFill.style.width = Math.min(100, (left / state.blitzSeconds) * 100) + '%';
+    blitzTimer.classList.toggle('low', left <= 10);
+
+    if (left <= 0) {
+      stopBlitz();
+      endGame('time');
+    }
+  }
+
+  function stopBlitz() {
+    if (blitzTick) clearInterval(blitzTick);
+    blitzTick = null;
+    if (blitzTimer) blitzTimer.hidden = true;
   }
 
   function startLearn() {
@@ -425,7 +577,9 @@
     document.querySelector('.brand h1').textContent = learn ? 'Learn the World' : 'Guess the Country';
     document.querySelector('.brand p').textContent = learn
       ? 'Click a country to study it — or search the list'
-      : 'Hover any country to see its flag on the right';
+      : (isQuiz()
+          ? 'Pick the right answer from the four options'
+          : 'Hover any country to see its flag on the right');
 
     if (!learn && zoomLayer) {
       // leaving study mode clears its highlighting and its stale study card
@@ -435,6 +589,8 @@
         .classed('is-pinned', false);
       resetFlagCard();
     }
+
+    applyQuizChrome();
   }
 
   /* ── Learn mode helpers ──────────────────────────────── */
@@ -590,7 +746,9 @@
   });
 
   function nextRound() {
-    if (state.rounds > 0 && state.round >= state.rounds) return endGame();
+    // a blitz timeout (or a manual end) can land while a reveal is still pending
+    if (!state.running) return;
+    if (roundsLimit() > 0 && state.round >= roundsLimit()) return endGame();
 
     state.round++;
     state.locked = false;
@@ -619,14 +777,21 @@
       selectCountry(key, false);
       return;
     }
+    answer(key);
+  }
 
+  /* One place where a round is judged, whichever way it was answered:
+     a click on the map or a click on one of the four quiz options. */
+  function answer(key) {
     if (!state.running || state.locked || !state.target) return;
     state.locked = true;
     setTaskButtons(false);
+    markQuizOptions(key);
 
     const targetKey = state.target;
     const picked = META[key];
-    const answer = META[targetKey];
+    const truth  = META[targetKey];
+    const blitz  = state.format === 'blitz';
 
     if (key === targetKey) {
       const n = nodeByKey.get(key);
@@ -634,19 +799,26 @@
 
       const secs = (performance.now() - state.roundStart) / 1000;
       const speed = Math.max(0, Math.round(60 - secs * 5));
-      const streakBonus = state.streak * 10;
-      const gain = Math.max(20, 100 + streakBonus + speed);
+
+      let gain;
+      if (blitz) {
+        // blitz pays a streak multiplier instead of a flat streak bonus
+        const mult = 1 + Math.min(state.streak, 10) * 0.1;
+        gain = Math.max(20, Math.round((100 + speed) * mult));
+      } else {
+        gain = Math.max(20, 100 + state.streak * 10 + speed);
+      }
 
       state.score += gain;
       state.streak++;
       state.correct++;
       state.bestStreak = Math.max(state.bestStreak, state.streak);
 
-      toast('ok', `Correct!  ${answer.n}  +${gain}`, answer.c);
+      toast('ok', `Correct!  ${truth.n}  +${gain}`, truth.c);
       pushLog(targetKey, true, '+' + gain);
-      revealAnswerName(answer);
+      revealAnswerName(truth);
       updateStats();
-      setTimeout(nextRound, 850);
+      setTimeout(nextRound, blitz ? 420 : 850);
     } else {
       const wn = nodeByKey.get(key);
       if (wn) wn.classList.add('is-wrong');
@@ -657,23 +829,25 @@
       state.wrong++;
       state.missed.push(targetKey);
 
-      toast('no', `${picked ? picked.n : 'That'} — it was ${answer.n}`, answer.c);
+      toast('no', `${picked ? picked.n : 'That'} — it was ${truth.n}`, truth.c);
       pushLog(targetKey, false, 'missed');
-      revealAnswerName(answer);
+      revealAnswerName(truth);
       updateStats();
-      setTimeout(nextRound, 1800);
+      setTimeout(nextRound, blitz ? 950 : 1800);
     }
   }
 
-  function endGame() {
+  function endGame(reason) {
     state.running = false;
     state.locked = true;
     state.target = null;
+    stopBlitz();
+    applyQuizChrome();
 
     const answered = state.correct + state.wrong;
     const acc = answered ? Math.round(state.correct / answered * 100) : 0;
 
-    taskName.textContent = 'Round complete';
+    taskName.textContent = reason === 'time' ? "Time's up!" : 'Round complete';
     taskZh.textContent = `${state.correct} / ${answered} correct`;
     taskHint.textContent = 'See the summary on the map';
     setTaskButtons(false);
@@ -699,7 +873,9 @@
       <div class="result-score">${state.score.toLocaleString()}</div>
       <div class="result-line">
         ${medal} ${state.correct}/${answered} correct · ${acc}% accuracy · best streak ${state.bestStreak}
-        <br><span style="color:var(--ink-3)">${clueLabel()} · ${DIFF[state.difficulty].label} difficulty</span>
+        <br><span style="color:var(--ink-3)">${clueLabel()} · ${fmtLabel()} · ${DIFF[state.difficulty].label} difficulty</span>
+        ${state.format === 'blitz'
+          ? `<br><span style="color:var(--ink-3)">${answered} answered in ${state.blitzSeconds}s</span>` : ''}
         ${isBest ? '<br><strong style="color:var(--ok)">New personal best!</strong>' : ''}
       </div>
       ${missedHTML}
@@ -730,8 +906,8 @@
 
   function updateStats() {
     $('statScore').textContent = state.score.toLocaleString();
-    $('statRound').textContent = state.rounds > 0
-      ? `${state.round}/${state.rounds}`
+    $('statRound').textContent = roundsLimit() > 0
+      ? `${state.round}/${roundsLimit()}`
       : String(state.round);
     $('statStreak').textContent = state.streak;
     const answered = state.correct + state.wrong;
@@ -765,38 +941,58 @@
       hard: buildPoolFor('hard').length
     };
     const best = Number(localStorage.getItem(bestKey(state.difficulty)) || 0);
-    const flagClue = state.clue === 'flag';
+    const c = state.clue;
+    const blitz = state.format === 'blitz';
 
     // put the task card back to its idle state
-    taskLabel.textContent = 'Find this country';
+    taskLabel.textContent = isQuiz() ? 'Pick the right answer' : 'Find this country';
     taskFlag.hidden = true;
     taskName.textContent = 'Press Start';
     taskZh.textContent = '';
     taskHint.textContent = '';
+    clearQuizOptions();
     setTaskButtons(false);
+    applyQuizChrome();
 
     showOverlay(`
       <h2>🌍 Guess the Country</h2>
       <p class="sub">
-        ${flagClue
-          ? 'A <b>flag</b> appears on the right. Click the country it belongs to.<br>'
-          : 'A <b>country name</b> appears on the right. Find it on the map and click it.<br>'}
-        Hover any country to see its flag in the flag panel.
+        ${CLUE_DESC[c]}<br>
+        ${isQuiz()
+          ? 'The map is <b>read-only</b> in quiz modes — answer from the four options.'
+          : 'Hover any country to see its flag in the flag panel.'}
       </p>
 
       <div class="opt-row">
-        <label>Clue</label>
+        <label>Mode</label>
         <div class="chips" id="chipsClue">
-          <button class="chip ${flagClue?'':'on'}" data-v="name">Country name<small>find it on the map</small></button>
-          <button class="chip ${flagClue?'on':''}" data-v="flag">Flag<small>which country is this?</small></button>
+          <button class="chip ${c==='name'?'on':''}"       data-v="name">Country name<small>click it on the map</small></button>
+          <button class="chip ${c==='flag'?'on':''}"       data-v="flag">Flag<small>click it on the map</small></button>
+          <button class="chip ${c==='flagQuiz'?'on':''}"   data-v="flagQuiz">Flag quiz<small>name → 1 of 4 flags</small></button>
+          <button class="chip ${c==='countryQuiz'?'on':''}" data-v="countryQuiz">Country quiz<small>flag → 1 of 4 names</small></button>
         </div>
+      </div>
+
+      <div class="opt-row">
+        <label>Format</label>
+        <div class="chips" id="chipsFormat">
+          <button class="chip ${!blitz?'on':''}" data-v="classic">Classic<small>a fixed number of rounds</small></button>
+          <button class="chip ${blitz?'on':''}"  data-v="blitz">Blitz<small>60 seconds, no limit</small></button>
+        </div>
+        ${blitz
+          ? `<div class="hint-note" style="margin-top:7px">
+               Blitz runs for <b>${state.blitzSeconds} seconds</b> with no round limit — score as much as
+               you can before the clock hits zero. Streaks build a score multiplier, and watching a
+               hint ad <b>pauses the clock</b>.
+             </div>`
+          : ''}
       </div>
 
       <div class="opt-row">
         <label>Stuck? Watch an ad for a hint</label>
         <div class="hint-note">
           The 💡 <b>Hint</b> button plays a 15-second ad, then shows which continent the
-          country is on and fades every other continent out of the map. Closing the ad
+          country is on${isQuiz() ? '' : ' and fades every other continent out of the map'}. Closing the ad
           early gives you nothing, and you get one hint per round.
         </div>
       </div>
@@ -810,7 +1006,7 @@
         </div>
       </div>
 
-      <div class="opt-row">
+      <div class="opt-row" ${blitz ? 'hidden' : ''}>
         <label>Rounds</label>
         <div class="chips" id="chipsRounds">
           <button class="chip ${state.rounds===10?'on':''}" data-v="10">10</button>
@@ -820,13 +1016,13 @@
         </div>
       </div>
 
-      <div class="opt-row">
+      <div class="opt-row" ${isQuiz() ? 'hidden' : ''}>
         <label>Country names while hovering</label>
         <div class="chips" id="chipsNames">
           <button class="chip ${state.namesOnHover?'on':''}" data-v="1">Show<small>relaxed</small></button>
           <button class="chip ${!state.namesOnHover?'on':''}" data-v="0">Hide<small>real challenge</small></button>
         </div>
-        ${flagClue && state.namesOnHover
+        ${c === 'flag' && state.namesOnHover
           ? `<div class="hint-note" style="margin-top:7px">With names shown, hovering a country tells you
              which one you are on — the flag clue becomes a lot easier. Pick <b>Hide</b> for a real test.</div>`
           : ''}
@@ -834,15 +1030,16 @@
 
       <button class="btn wide" id="btnStart">Start playing</button>
       <button class="btn ghost wide" id="btnLearn">📚 Learn mode — study the map &amp; flags</button>
-      <div class="best">Personal best (${DIFF[state.difficulty].label} · ${clueLabel().toLowerCase()}): <strong>${best.toLocaleString()}</strong></div>
+      <div class="best">Personal best (${DIFF[state.difficulty].label} · ${clueLabel().toLowerCase()} · ${fmtLabel().toLowerCase()}): <strong>${best.toLocaleString()}</strong></div>
     `);
 
     chipGroup('chipsClue', v => {
       state.clue = v;
-      // sensible default per clue: flag rounds start without the name giveaway
-      state.namesOnHover = v !== 'flag';
+      // sensible default per clue: only the plain name clue shows hover names
+      state.namesOnHover = v === 'name';
       showStartScreen();
     });
+    chipGroup('chipsFormat', v => { state.format = v; showStartScreen(); });
     chipGroup('chipsDiff',   v => { state.difficulty = v; showStartScreen(); });
     chipGroup('chipsRounds', v => { state.rounds = Number(v); showStartScreen(); });
     chipGroup('chipsNames',  v => { state.namesOnHover = v === '1'; showStartScreen(); });
@@ -976,7 +1173,10 @@
     adOverlay.hidden = true;
     adClaim.classList.remove('pulse');
     // time spent on the ad must not count against the round's speed bonus
-    state.roundStart += performance.now() - adStartedAt;
+    const spent = performance.now() - adStartedAt;
+    state.roundStart += spent;
+    // …nor against the blitz clock
+    if (state.format === 'blitz' && state.running) state.deadline += spent;
   }
 
   function claimHint() {
@@ -1015,7 +1215,7 @@
     pushLog(targetKey, false, 'skipped');
     revealAnswerName(META[targetKey]);
     updateStats();
-    setTimeout(nextRound, 1600);
+    setTimeout(nextRound, state.format === 'blitz' ? 900 : 1600);
   });
 
   $('adCancel').addEventListener('click', closeAd);
@@ -1060,7 +1260,8 @@
   window.WMG = {
     state, META, FEATURES,
     projection: () => projection,
-    bestKey, clueLabel,
+    bestKey, clueLabel, fmtLabel, isQuiz, roundsLimit,
+    quizOptions: key => quizOptions(key),
     ads: { list: ADS, pick: pickAd, last: () => lastAdId, setLast: v => { lastAdId = v; } }
   };
 })();

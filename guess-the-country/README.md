@@ -1,7 +1,8 @@
 # 🌍 World Map — Guess the Country
 
-A 2D world map guessing game. Each round gives you a **clue** — the country's name, or its flag —
-and you find that country on the map and click it.
+A 2D world map guessing game with **four modes** and two formats. Each round gives you a clue —
+the country's name or its flag — and you either find that country on the map and click it, or pick
+it out of four choices.
 **Hover any country and its flag appears in the panel on the right.**
 
 Everything is bundled locally — no internet connection is needed to play.
@@ -26,29 +27,54 @@ python -m http.server 8777
 
 | | |
 |---|---|
-| **Goal** | A clue shows up in the task card — either the country's **name** or its **flag**. Click that country on the map. |
-| **Clue types** | **Country name** (find the name on the map) or **Flag** (click the country the flag belongs to). Everything else — scoring, difficulty, hint — works the same either way. |
-| **Hover** | The right-hand flag panel shows the flag, English + Chinese name, region and area of whatever country the cursor is on. |
+| **Goal** | A clue shows up in the task card. Either click the matching country on the map, or pick the right answer out of four. |
+| **Hover** | The right-hand flag panel shows the flag, English + Chinese name, region and area of whatever country the cursor is on. *(Map modes only — the map is read-only during a quiz.)* |
 | **Correct** | The country flashes green. Points = `100 + streak bonus + speed bonus`. |
 | **Wrong** | Your pick flashes red and the real answer pulses amber, so you learn it. |
-| **Hint** | Click 💡 **Hint** and a 15-second ad plays — one of two advertisers, picked at random each time. Once it finishes, the country's **continent** is shown and every other continent fades out of the map. Closing the ad early gives you nothing. One hint per round. The ad time doesn't count against your speed bonus. |
+| **Hint** | Click 💡 **Hint** and a 15-second ad plays — one of two advertisers, picked at random each time. Once it finishes, the country's **continent** is shown and every other continent fades out of the map. Closing the ad early gives you nothing. One hint per round. The ad time doesn't count against your speed bonus (or the blitz clock). |
 | **Zoom** | Scroll wheel or the `＋ / － / ⤾` buttons. Drag to pan. `Esc` resets the view. |
 | **Learn mode** | The 📚 button in the top bar (or on the start screen). See below. |
 
+### The four modes
+
+| Mode | What you see | What you do |
+|---|---|---|
+| **Country name** | A country name | Find it on the map and click it |
+| **Flag** | A flag, shown large | Click the country the flag belongs to |
+| **Flag quiz** | A country name | Pick its flag from **four** choices |
+| **Country quiz** | A flag | Pick the country it belongs to from **four** choices |
+
+The two quiz modes are multiple-choice: the four options sit in the task card and the map becomes a
+read-only backdrop (a "Quiz mode" badge sits over it), so you can't simply hover to find the answer.
+The distractors are drawn from **the same continent first**, which is what makes them worth learning.
+Once you answer, the correct country is still highlighted on the map — so you always see where it was.
+
+In the two map modes the country name stays hidden until you answer (right or wrong) when the flag is
+the clue, so you always learn it.
+
+### The two formats
+
+| Format | |
+|---|---|
+| **Classic** | A fixed number of rounds — 10 / 20 / 50 / endless. |
+| **Blitz** | **60 seconds, no round limit.** Score as much as you can before the clock hits zero. Streaks build a score *multiplier* (`×1.0` → `×2.0` at a 10-streak) instead of a flat bonus, and the clock turns red under 10 seconds. Watching a hint ad **pauses the clock**. |
+
+Blitz works with any of the four modes.
+
 ### Options on the start screen
 
-- **Clue** — `Country name` (a name appears; find it on the map) or `Flag` (a flag appears; click the
-  country it belongs to). The flag is shown large in the task card, and the country name stays hidden
-  until you answer — right or wrong — so you always learn it.
+- **Mode** — the four modes above. Switching to a quiz mode hides the hover-name option (it doesn't
+  apply) and switching away from the plain name mode defaults hover names to `Hide`.
+- **Format** — `Classic` or `Blitz`. Picking Blitz retires the Rounds row and explains the rules.
 - **Difficulty** — `Easy` = 73 largest countries, `Normal` = 111, `Hard` = all 174.
   The rule is a land-area threshold (≥300,000 / ≥90,000 / any km²), so Easy is the set of big, recognizable countries.
-- **Rounds** — 10 / 20 / 50 / endless.
+- **Rounds** — 10 / 20 / 50 / endless (classic only).
 - **Country names while hovering** — `Show` (relaxed) or `Hide` (the flag is the only clue; real challenge).
   In both cases the flag is always shown on hover. Picking the **Flag** clue defaults this to `Hide`,
   and the start screen warns you when it is on `Show`.
 
-Your personal best is saved in the browser, tracked **per difficulty and per clue** — so a flag run is
-never compared against a name run.
+Your personal best is saved in the browser, tracked **per difficulty, per mode and per format** — so a
+flag quiz is never compared against a map run, and blitz never against classic.
 
 ---
 
@@ -110,6 +136,29 @@ one twice in a row (with only two entries that means they alternate). To add a t
 entry to `ADS` and add a matching `.ad-creative.ad-<id>` + `.ad-<id> .ad-art .t1…t5` block to
 `styles.css` for its colour scheme.
 
+### Adding another mode
+
+A mode is just a value of `state.clue`, plus an entry in the label/description tables:
+
+```js
+const CLUE_LABEL = { …, flagQuiz: 'Flag quiz', countryQuiz: 'Country quiz' };
+const CLUE_DESC  = { …, flagQuiz: '…', countryQuiz: '…' };
+```
+
+Then three small hooks:
+
+1. **Start screen** — add a `<button class="chip" data-v="…">` to the `#chipsClue` chips in
+   `showStartScreen()`.
+2. **The prompt** — `renderPrompt(key)` decides what the task card shows. Map modes let the player
+   click the map; multiple-choice modes call `renderQuizOptions(key)` and list themselves in
+   `QUIZ_CLUES`, which flips the app into `mode-quiz` (map read-only, hover card hidden).
+3. **Answering** — everything funnels through one `answer(key)` function, so scoring, streaks, the
+   log, the toast and the next round all work unchanged whichever way the round was answered.
+
+`bestKey()` automatically namespaces the personal best by difficulty + mode + format, so a new mode
+never collides with an existing one. `state.format` works the same way: `classic` uses `state.rounds`,
+`blitz` swaps it for a countdown (see `startBlitz` / `tickBlitz`).
+
 ### Rebuilding the country tables
 
 ```bash
@@ -147,12 +196,13 @@ polygon in the dataset, so they are not in the guessing pool. Two territories ha
 
 ## Tests
 
-`_test/run.js` drives a real Chrome through the whole game (**47 assertions**: rendering, hover → flag
+`_test/run.js` drives a real Chrome through the whole game (**64 assertions**: rendering, hover → flag
 panel, correct/wrong feedback, the 15-second ad and hint gating, both ad creatives, random ad
 rotation, hint reset between rounds, skip, zoom, end-of-game summary, learn mode — list, search in
 three languages, continent filtering, fly-to, study card contents, hover preview/restore, mode
-switching — the flag clue mode end to end, responsive resize, console errors). It takes about two
-minutes because it genuinely waits out the ad twice.
+switching — the flag clue mode end to end, the flag quiz and country quiz modes end to end, quiz
+best-score namespacing, the blitz clock and its timeout ending, responsive resize, console errors).
+It takes about two minutes because it genuinely waits out the ad twice.
 
 The suite serves the game from `_test/serve.js` on port 8779 — a small Node static server. `python -m
 http.server` has a listen backlog of 5, and the game's burst of ~255 flag preloads can make a few of
