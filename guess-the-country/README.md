@@ -1,6 +1,7 @@
 # 🌍 World Map — Guess the Country
 
-A 2D world map guessing game. The game names a country; you find it on the map and click it.
+A 2D world map guessing game. Each round gives you a **clue** — the country's name, or its flag —
+and you find that country on the map and click it.
 **Hover any country and its flag appears in the panel on the right.**
 
 Everything is bundled locally — no internet connection is needed to play.
@@ -25,7 +26,8 @@ python -m http.server 8777
 
 | | |
 |---|---|
-| **Goal** | A country name shows up under *Find this country*. Click that country on the map. |
+| **Goal** | A clue shows up in the task card — either the country's **name** or its **flag**. Click that country on the map. |
+| **Clue types** | **Country name** (find the name on the map) or **Flag** (click the country the flag belongs to). Everything else — scoring, difficulty, hint — works the same either way. |
 | **Hover** | The right-hand flag panel shows the flag, English + Chinese name, region and area of whatever country the cursor is on. |
 | **Correct** | The country flashes green. Points = `100 + streak bonus + speed bonus`. |
 | **Wrong** | Your pick flashes red and the real answer pulses amber, so you learn it. |
@@ -35,13 +37,18 @@ python -m http.server 8777
 
 ### Options on the start screen
 
+- **Clue** — `Country name` (a name appears; find it on the map) or `Flag` (a flag appears; click the
+  country it belongs to). The flag is shown large in the task card, and the country name stays hidden
+  until you answer — right or wrong — so you always learn it.
 - **Difficulty** — `Easy` = 73 largest countries, `Normal` = 111, `Hard` = all 174.
   The rule is a land-area threshold (≥300,000 / ≥90,000 / any km²), so Easy is the set of big, recognizable countries.
 - **Rounds** — 10 / 20 / 50 / endless.
 - **Country names while hovering** — `Show` (relaxed) or `Hide` (the flag is the only clue; real challenge).
-  In both cases the flag is always shown on hover.
+  In both cases the flag is always shown on hover. Picking the **Flag** clue defaults this to `Hide`,
+  and the start screen warns you when it is on `Show`.
 
-Your personal best per difficulty is saved in the browser.
+Your personal best is saved in the browser, tracked **per difficulty and per clue** — so a flag run is
+never compared against a name run.
 
 ---
 
@@ -140,12 +147,16 @@ polygon in the dataset, so they are not in the guessing pool. Two territories ha
 
 ## Tests
 
-`_test/run.js` drives a real Chrome through the whole game (37 assertions: rendering, hover → flag
+`_test/run.js` drives a real Chrome through the whole game (**46 assertions**: rendering, hover → flag
 panel, correct/wrong feedback, the 15-second ad and hint gating, both ad creatives, random ad
 rotation, hint reset between rounds, skip, zoom, end-of-game summary, learn mode — list, search in
 three languages, continent filtering, fly-to, study card contents, hover preview/restore, mode
-switching — responsive resize, console errors). It takes about a minute because it actually waits
-out the ad.
+switching — the flag clue mode end to end, responsive resize, console errors). It takes about two
+minutes because it genuinely waits out the ad twice.
+
+The suite serves the game from `_test/serve.js` on port 8779 — a small Node static server. `python -m
+http.server` has a listen backlog of 5, and the game's burst of ~255 flag preloads can make a few of
+them come back `ERR_CONNECTION_REFUSED`, which made the console-cleanliness assertion flaky.
 
 ```bash
 NODE_PATH="<playwright-core node_modules>" node _test/run.js

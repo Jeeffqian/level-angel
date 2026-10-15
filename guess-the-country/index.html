@@ -102,7 +102,13 @@
 
       <!-- Task panel -->
       <div class="card task-card" id="taskCard">
-        <div class="task-label">Find this country</div>
+        <div class="task-label" id="taskLabel">Find this country</div>
+
+        <!-- flag clue (flag → country): the flag itself is the prompt -->
+        <div class="task-flag" id="taskFlag" hidden>
+          <img id="taskFlagImg" alt="Flag to identify" />
+        </div>
+
         <div class="task-name" id="taskName">Press Start</div>
         <div class="task-zh" id="taskZh"></div>
         <div class="task-hint" id="taskHint"></div>

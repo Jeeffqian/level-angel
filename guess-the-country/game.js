@@ -38,6 +38,9 @@
   const flagHead   = $('flagCardHead');
   const hoverDot   = $('hoverDot');
 
+  const taskLabel   = $('taskLabel');
+  const taskFlag    = $('taskFlag');
+  const taskFlagImg = $('taskFlagImg');
   const taskName = $('taskName');
   const taskZh   = $('taskZh');
   const taskHint = $('taskHint');
@@ -62,6 +65,7 @@
   /* ── State ───────────────────────────────────────────── */
   const state = {
     mode: 'game',            // 'game' | 'learn'
+    clue: 'name',            // 'name' → the country name is given | 'flag' → the flag is given
     difficulty: 'normal',    // 'easy' | 'normal' | 'hard'
     rounds: 20,              // 0 = endless
     namesOnHover: true,
@@ -124,6 +128,38 @@
 
   const escapeHtml = s => String(s).replace(/[&<>"]/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* Best score is tracked per difficulty *and* per clue, so a flag run is never
+     compared against a name run. The name key stays as it always was. */
+  const bestKey = d => 'wmg.best.' + d + (state.clue === 'flag' ? '.flag' : '');
+  const clueLabel = () => state.clue === 'flag' ? 'Flag clue' : 'Name clue';
+
+  /* The round prompt: either the country's name, or its flag. */
+  function renderPrompt(key) {
+    const m = META[key];
+    const flagClue = state.clue === 'flag';
+
+    taskLabel.textContent = flagClue
+      ? 'Find the country with this flag'
+      : 'Find this country';
+
+    taskFlag.hidden = !flagClue;
+    if (flagClue) {
+      taskFlagImg.src = flagUrl(m.c);
+      taskFlagImg.alt = 'Flag to identify';
+    }
+
+    // in flag mode the name is the answer, so it stays hidden until you answer
+    taskName.textContent = flagClue ? '' : m.n;
+    taskZh.textContent   = flagClue ? '' : m.zh;
+  }
+
+  /* Once a flag round is answered, put the name back so you actually learn it. */
+  function revealAnswerName(answer) {
+    if (state.clue !== 'flag' || !answer) return;
+    taskName.textContent = answer.n;
+    taskZh.textContent   = answer.zh;
+  }
 
   /* ── Map setup ───────────────────────────────────────── */
   const svg = d3.select(svgEl);
@@ -532,9 +568,7 @@
   $('btnMode').addEventListener('click', () => {
     if (state.mode === 'learn') {
       setUiMode('game');
-      taskName.textContent = 'Press Start';
-      taskZh.textContent = '';
-      showStartScreen();
+      showStartScreen();      // also resets the task card
     } else {
       startLearn();
     }
@@ -558,9 +592,7 @@
     state.target = key;
     state.roundStart = performance.now();
 
-    const m = META[key];
-    taskName.textContent = m.n;
-    taskZh.textContent = m.zh;
+    renderPrompt(key);
     taskHint.textContent = '';
     setTaskButtons(true);
 
@@ -597,6 +629,7 @@
 
       toast('ok', `Correct!  ${answer.n}  +${gain}`, answer.c);
       pushLog(targetKey, true, '+' + gain);
+      revealAnswerName(answer);
       updateStats();
       setTimeout(nextRound, 850);
     } else {
@@ -611,6 +644,7 @@
 
       toast('no', `${picked ? picked.n : 'That'} — it was ${answer.n}`, answer.c);
       pushLog(targetKey, false, 'missed');
+      revealAnswerName(answer);
       updateStats();
       setTimeout(nextRound, 1800);
     }
@@ -628,7 +662,7 @@
     taskZh.textContent = `${state.correct} / ${answered} correct`;
     taskHint.textContent = 'See the summary on the map';
     setTaskButtons(false);
-    const key = 'wmg.best.' + state.difficulty;
+    const key = bestKey(state.difficulty);
     const prevBest = Number(localStorage.getItem(key) || 0);
     const isBest = state.score > prevBest;
     if (isBest) localStorage.setItem(key, String(state.score));
@@ -650,6 +684,7 @@
       <div class="result-score">${state.score.toLocaleString()}</div>
       <div class="result-line">
         ${medal} ${state.correct}/${answered} correct · ${acc}% accuracy · best streak ${state.bestStreak}
+        <br><span style="color:var(--ink-3)">${clueLabel()} · ${DIFF[state.difficulty].label} difficulty</span>
         ${isBest ? '<br><strong style="color:var(--ok)">New personal best!</strong>' : ''}
       </div>
       ${missedHTML}
@@ -714,14 +749,33 @@
       normal: buildPoolFor('normal').length,
       hard: buildPoolFor('hard').length
     };
-    const best = Number(localStorage.getItem('wmg.best.' + state.difficulty) || 0);
+    const best = Number(localStorage.getItem(bestKey(state.difficulty)) || 0);
+    const flagClue = state.clue === 'flag';
+
+    // put the task card back to its idle state
+    taskLabel.textContent = 'Find this country';
+    taskFlag.hidden = true;
+    taskName.textContent = 'Press Start';
+    taskZh.textContent = '';
+    taskHint.textContent = '';
+    setTaskButtons(false);
 
     showOverlay(`
       <h2>🌍 Guess the Country</h2>
       <p class="sub">
-        A country name appears on the right. Find it on the map and click it.<br>
+        ${flagClue
+          ? 'A <b>flag</b> appears on the right. Click the country it belongs to.<br>'
+          : 'A <b>country name</b> appears on the right. Find it on the map and click it.<br>'}
         Hover any country to see its flag in the flag panel.
       </p>
+
+      <div class="opt-row">
+        <label>Clue</label>
+        <div class="chips" id="chipsClue">
+          <button class="chip ${flagClue?'':'on'}" data-v="name">Country name<small>find it on the map</small></button>
+          <button class="chip ${flagClue?'on':''}" data-v="flag">Flag<small>which country is this?</small></button>
+        </div>
+      </div>
 
       <div class="opt-row">
         <label>Stuck? Watch an ad for a hint</label>
@@ -757,13 +811,23 @@
           <button class="chip ${state.namesOnHover?'on':''}" data-v="1">Show<small>relaxed</small></button>
           <button class="chip ${!state.namesOnHover?'on':''}" data-v="0">Hide<small>real challenge</small></button>
         </div>
+        ${flagClue && state.namesOnHover
+          ? `<div class="hint-note" style="margin-top:7px">With names shown, hovering a country tells you
+             which one you are on — the flag clue becomes a lot easier. Pick <b>Hide</b> for a real test.</div>`
+          : ''}
       </div>
 
       <button class="btn wide" id="btnStart">Start playing</button>
       <button class="btn ghost wide" id="btnLearn">📚 Learn mode — study the map &amp; flags</button>
-      <div class="best">Personal best (${DIFF[state.difficulty].label}): <strong>${best.toLocaleString()}</strong></div>
+      <div class="best">Personal best (${DIFF[state.difficulty].label} · ${clueLabel().toLowerCase()}): <strong>${best.toLocaleString()}</strong></div>
     `);
 
+    chipGroup('chipsClue', v => {
+      state.clue = v;
+      // sensible default per clue: flag rounds start without the name giveaway
+      state.namesOnHover = v !== 'flag';
+      showStartScreen();
+    });
     chipGroup('chipsDiff',   v => { state.difficulty = v; showStartScreen(); });
     chipGroup('chipsRounds', v => { state.rounds = Number(v); showStartScreen(); });
     chipGroup('chipsNames',  v => { state.namesOnHover = v === '1'; showStartScreen(); });
@@ -934,6 +998,7 @@
     state.missed.push(targetKey);
     toast('info', `Skipped — it was ${META[targetKey].n}`, META[targetKey].c);
     pushLog(targetKey, false, 'skipped');
+    revealAnswerName(META[targetKey]);
     updateStats();
     setTimeout(nextRound, 1600);
   });
@@ -980,6 +1045,7 @@
   window.WMG = {
     state, META, FEATURES,
     projection: () => projection,
+    bestKey, clueLabel,
     ads: { list: ADS, pick: pickAd, last: () => lastAdId, setLast: v => { lastAdId = v; } }
   };
 })();
