@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>World Map — Guess the Country</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌍</text></svg>" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Top bar ───────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🌍</span>
+      <div>
+        <h1>Guess the Country</h1>
+        <p>Hover any country to see its flag on the right</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="stats" id="stats">
+        <div class="stat"><span class="stat-v" id="statScore">0</span><span class="stat-k">Score</span></div>
+        <div class="stat"><span class="stat-v" id="statRound">–</span><span class="stat-k">Round</span></div>
+        <div class="stat"><span class="stat-v" id="statStreak">0</span><span class="stat-k">Streak</span></div>
+        <div class="stat"><span class="stat-v" id="statAcc">–</span><span class="stat-k">Accuracy</span></div>
+      </div>
+      <button class="btn ghost mode-btn" id="btnMode">📚 Learn mode</button>
+    </div>
+  </header>
+
+  <!-- ── Stage ─────────────────────────────────────────────── -->
+  <main class="stage">
+
+    <!-- Map -->
+    <section class="map-wrap">
+      <svg id="map" role="img" aria-label="World map"></svg>
+
+      <div class="map-tools">
+        <button class="tool" id="btnZoomIn"  title="Zoom in">＋</button>
+        <button class="tool" id="btnZoomOut" title="Zoom out">－</button>
+        <button class="tool" id="btnZoomReset" title="Reset view">⤾</button>
+      </div>
+
+      <div class="map-legend">
+        <span><i class="sw sw-idle"></i>Country</span>
+        <span><i class="sw sw-hover"></i>Hovered</span>
+        <span><i class="sw sw-ok"></i>Correct</span>
+        <span><i class="sw sw-no"></i>Wrong</span>
+        <span><i class="sw sw-reveal"></i>Answer</span>
+      </div>
+
+      <div class="toast" id="toast" aria-live="polite"></div>
+
+      <!-- Start / result overlay -->
+      <div class="overlay" id="overlay">
+        <div class="panel" id="overlayPanel"></div>
+      </div>
+    </section>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+      <!-- Flag panel -->
+      <div class="card flag-card" id="flagCard">
+        <div class="card-head">
+          <span class="dot" id="hoverDot"></span>
+          <span id="flagCardHead">Hover a country</span>
+        </div>
+
+        <div class="flag-stage" id="flagStage">
+          <img id="flagImg" alt="" hidden />
+          <div class="flag-empty" id="flagEmpty">
+            <span>Move your mouse over the map</span>
+          </div>
+        </div>
+
+        <div class="flag-info">
+          <div class="flag-name" id="flagNameEn">—</div>
+          <div class="flag-name-zh" id="flagNameZh"></div>
+          <div class="flag-meta" id="flagMeta"></div>
+          <dl class="flag-facts" id="flagFacts" hidden></dl>
+        </div>
+      </div>
+
+      <!-- Learn / study panel -->
+      <div class="card learn-card" id="learnCard" hidden>
+        <div class="card-head"><span>Study</span><span id="learnCount"></span></div>
+
+        <input class="learn-search" id="learnSearch" type="search" autocomplete="off"
+               placeholder="Search a country…  搜索国家" />
+
+        <div class="chips learn-chips" id="learnContinents"></div>
+
+        <button class="btn ghost wide" id="btnRandomCountry">🎲 Jump to a random country</button>
+
+        <ul class="learn-list" id="learnList"></ul>
+      </div>
+
+      <!-- Task panel -->
+      <div class="card task-card" id="taskCard">
+        <div class="task-label">Find this country</div>
+        <div class="task-name" id="taskName">Press Start</div>
+        <div class="task-zh" id="taskZh"></div>
+        <div class="task-hint" id="taskHint"></div>
+        <div class="task-actions">
+          <button class="btn ghost" id="btnHint" disabled>💡 Hint · 15s ad</button>
+          <button class="btn ghost" id="btnSkip" disabled>⏭ Skip</button>
+        </div>
+      </div>
+
+      <!-- Answer log -->
+      <div class="card log-card">
+        <div class="card-head"><span>Recent answers</span><span id="logCount"></span></div>
+        <ul class="log" id="log"></ul>
+      </div>
+
+    </aside>
+  </main>
+</div>
+
+<!-- ── Ad-gated hint ─────────────────────────────────────────── -->
+<div class="ad-overlay" id="adOverlay" hidden>
+  <div class="ad-modal" role="dialog" aria-modal="true" aria-label="Advertisement">
+
+    <div class="ad-head">
+      <span class="ad-badge">Sponsored</span>
+      <button class="ad-x" id="adCancel" title="Close without a hint">✕</button>
+    </div>
+
+    <!-- creative is rendered by game.js from the ADS table -->
+    <a class="ad-creative" id="adCreative" href="#" target="_blank" rel="noopener noreferrer"></a>
+
+    <div class="ad-progress" role="progressbar" aria-valuemin="0" aria-valuemax="15">
+      <div class="ad-bar" id="adBar"></div>
+    </div>
+
+    <div class="ad-foot">
+      <span class="ad-status" id="adStatus">Hint unlocks in 15s</span>
+      <button class="btn" id="adClaim" disabled>Reveal continent</button>
+    </div>
+
+    <p class="ad-note">Watching the ad reveals which continent the country is on. Closing early gives no hint.</p>
+  </div>
+</div>
+
+<script src="assets/d3.min.js"></script>
+<script src="assets/topojson-client.min.js"></script>
+<script src="assets/data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

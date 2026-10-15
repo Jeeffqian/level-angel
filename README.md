@@ -21,6 +21,7 @@
 ## 游戏
 - `level-devil-game.html` — LEVEL ANGEL 主游戏
 - `europe-map.html` — 欧罗巴地图策略（2~3 人 P2P 联机）
+- `guess-the-country/` — 猜国家（2D 世界地图猜国名，悬停显示国旗，含学习模式）
 - `memory-craft.html` — 记忆速建（3D 记忆搭建）
 - `micro-world-survival.html` — 微缩世界生存（体素生存建造、昼夜循环、天气、多种敌人、制作、音效、存档与任务目标）
 - `peerjs.min.js` — P2P 联机库
