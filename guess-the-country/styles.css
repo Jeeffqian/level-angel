@@ -695,13 +695,22 @@ html, body {
 
 /* quiz chrome: the map is a read-only backdrop, the panel does the work */
 .app.mode-quiz .flag-card { display: none; }
-.app.mode-quiz .task-card { flex: 1 1 auto; }
 .app.mode-quiz #map      { pointer-events: none; cursor: default; }
 
+/* the task card is the whole mode here, so centre its contents in the room */
+.app.mode-quiz .task-card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.app.mode-quiz .quiz-options.as-flags .quiz-opt img { height: 64px; }
+.app.mode-quiz .quiz-opt { padding: 13px 10px; }
+
+/* top-right, so it never collides with the centred toast */
 .quiz-badge {
   position: absolute;
-  left: 50%; top: 14px;
-  transform: translateX(-50%);
+  right: 14px; top: 14px;
   padding: 7px 15px;
   font-size: 12px; font-weight: 650;
   color: var(--accent);
@@ -711,6 +720,7 @@ html, body {
   box-shadow: 0 4px 14px rgba(16, 32, 52, .1);
   pointer-events: none;
   white-space: nowrap;
+  z-index: 4;
 }
 
 /* ── Learn / study mode ───────────────────────────────────── */
