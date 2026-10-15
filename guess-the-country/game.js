@@ -319,6 +319,20 @@
     flagFacts.hidden = false;
   }
 
+  /* Put the flag panel back to its "nothing hovered yet" state. */
+  function resetFlagCard() {
+    hoverDot.classList.remove('live');
+    flagHead.textContent = 'Hover a country';
+    flagImg.hidden = true;
+    flagEmpty.hidden = false;
+    flagEmpty.className = 'flag-empty';
+    flagEmpty.innerHTML = '<span>Move your mouse over the map</span>';
+    flagNameEn.textContent = '—';
+    flagNameZh.textContent = '';
+    flagMeta.textContent = '';
+    flagFacts.hidden = true;
+  }
+
   /* ── Game flow ───────────────────────────────────────── */
   function buildPool() {
     const min = DIFF[state.difficulty].minArea;
@@ -414,11 +428,12 @@
       : 'Hover any country to see its flag on the right';
 
     if (!learn && zoomLayer) {
-      // leaving study mode clears its highlighting
+      // leaving study mode clears its highlighting and its stale study card
       selectedKey = null;
       zoomLayer.selectAll('path.country')
         .classed('is-dim', false)
         .classed('is-pinned', false);
+      resetFlagCard();
     }
   }
 

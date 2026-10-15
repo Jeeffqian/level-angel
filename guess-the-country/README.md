@@ -147,7 +147,7 @@ polygon in the dataset, so they are not in the guessing pool. Two territories ha
 
 ## Tests
 
-`_test/run.js` drives a real Chrome through the whole game (**46 assertions**: rendering, hover → flag
+`_test/run.js` drives a real Chrome through the whole game (**47 assertions**: rendering, hover → flag
 panel, correct/wrong feedback, the 15-second ad and hint gating, both ad creatives, random ad
 rotation, hint reset between rounds, skip, zoom, end-of-game summary, learn mode — list, search in
 three languages, continent filtering, fly-to, study card contents, hover preview/restore, mode
