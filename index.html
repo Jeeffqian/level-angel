@@ -1,307 +1,659 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>游戏合集 - 小游戏中心</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>可爱豆豆射击</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  background: #07090f;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(225, 6, 0, .16), transparent),
-    radial-gradient(ellipse 60% 40% at 90% 110%, rgba(0, 200, 255, .10), transparent);
-  color: #eef2f7;
-  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 48px 24px 32px;
-}
-
-header { text-align: center; margin-bottom: 44px; }
-
-.logo {
-  font-size: clamp(30px, 6vw, 46px);
-  font-weight: 800;
-  letter-spacing: 4px;
-}
-.logo .cn { color: #e10600; }
-.logo .en {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 8px;
-  color: #6b7686;
-  margin-top: 8px;
-}
-
-.sub {
-  margin-top: 14px;
-  color: #8a94a3;
-  font-size: 15px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 26px;
-  width: 100%;
-  max-width: 860px;
-}
-
-.card {
-  position: relative;
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  background: linear-gradient(160deg, #11151f 0%, #0c0f17 100%);
-  border: 1px solid #232a38;
-  border-radius: 16px;
-  padding: 30px 28px 26px;
-  overflow: hidden;
-  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
-}
-.card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 4px;
-  background: var(--accent);
-  opacity: .85;
-}
-.card:hover, .card:focus-visible {
-  transform: translateY(-6px);
-  border-color: var(--accent);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .55), 0 0 0 1px var(--accent);
-  outline: none;
-}
-.card:active { transform: translateY(-3px); }
-
-.card-icon {
-  width: 74px;
-  height: 74px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 38px;
-  background: #171c28;
-  border: 1px solid #2a3242;
-  margin-bottom: 20px;
-}
-
-.card h2 { font-size: 23px; font-weight: 700; letter-spacing: 1px; }
-.card h2 .badge {
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  padding: 3px 9px;
-}
-
-.card p {
-  margin-top: 12px;
-  font-size: 14px;
-  line-height: 1.75;
-  color: #97a1b0;
-  min-height: 74px;
-}
-
-.card .how {
-  margin-top: 12px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: #7c8698;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid #1e2530;
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-.card .how b { color: #aab4c2; font-weight: 600; }
-
-.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.tags span {
-  font-size: 12px;
-  color: #7c8698;
-  background: #171c28;
-  border: 1px solid #262e3d;
-  border-radius: 6px;
-  padding: 4px 10px;
-}
-
-.play {
-  margin-top: 22px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--accent);
-}
-.play::after { content: "▶"; font-size: 12px; transition: transform .2s; }
-.card:hover .play::after { transform: translateX(5px); }
-
-.card.disabled {
-  opacity: .5;
-  filter: grayscale(.4);
-  cursor: default;
-}
-.card.disabled:hover {
-  transform: none;
-  border-color: #232a38;
-  box-shadow: none;
-}
-
-footer {
-  margin-top: 46px;
-  color: #4d5563;
-  font-size: 13px;
-  text-align: center;
-  line-height: 1.8;
-}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#game-wrap{position:relative;width:460px;height:640px;max-width:100vw;max-height:100vh;box-shadow:0 0 40px rgba(255,160,50,.45);border-radius:8px;overflow:hidden}
+canvas{display:block;width:460px;height:640px;touch-action:none}
 </style>
 </head>
 <body>
+<div id="game-wrap"><canvas id="gameCanvas" width="460" height="640"></canvas></div>
+<script>
+"use strict";
+/* 可爱豆豆射击 - HTML5 Canvas / 微信小游戏 460x640 */
+const W=460,H=640,PLAYER_SPEED=5.6,PLAYER_Y=H-120,START_HP=3,COMBO_TIMEOUT=1800,WEAPON_DURATION=15000,REMOTE_KILL_DIST=220;
+const WEAPONS={
+ normal:{name:"普通射击",color:"#ffdd57",cd:220,dmg:1,bulletSpeed:9,icon:"●"},
+ flame:{name:"火焰喷射",color:"#ff6b35",cd:90,dmg:1,bulletSpeed:7,icon:"F"},
+ ice:{name:"冰冻权杖",color:"#5fd0ff",cd:520,dmg:1,bulletSpeed:8,icon:"I"},
+ lightning:{name:"雷电权杖",color:"#ffe94d",cd:700,dmg:2,bulletSpeed:0,icon:"L"},
+ split:{name:"分裂弹",color:"#c77dff",cd:340,dmg:1,bulletSpeed:8.5,icon:"S"}
+};
+const WEAPON_KEYS=["normal","flame","ice","lightning","split"];
+const ENEMY_TYPES={
+ normal:{score:50,hp:1,r:16,color:"#ff5c5c",speed:1.1},
+ fast:{score:100,hp:1,r:14,color:"#ffd166",speed:2.4},
+ hard:{score:200,hp:2,r:19,color:"#4ecdc4",speed:0.9},
+ explosive:{score:150,hp:1,r:17,color:"#b15cff",speed:1.3,explodeR:70},
+ boss:{score:500,hp:12,r:38,color:"#ff477e",speed:0.55}
+};
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randI=(a,b)=>Math.floor(rand(a,b+1));
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const dist=(x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const hitCircle=(a,b)=>dist(a.x,a.y,b.x,b.y)<a.r+b.r;
+function shadeColor(hex,p){const n=parseInt(String(hex).replace("#",""),16);const a=Math.round(2.55*p);const R=clamp((n>>16)+a,0,255);const G=clamp(((n>>8)&255)+a,0,255);const B=clamp((n&255)+a,0,255);return"#"+(0x1000000+R*0x10000+G*0x100+B).toString(16).slice(1)}
+const lighten=(h,a)=>shadeColor(h,a),darken=(h,a)=>shadeColor(h,-a);
+const Storage={get(k,d){try{if(typeof wx!=="undefined"&&wx.getStorageSync){const v=wx.getStorageSync(k);return v===""||v==null?d:v}const v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}},set(k,v){try{if(typeof wx!=="undefined"&&wx.setStorageSync)return wx.setStorageSync(k,v);localStorage.setItem(k,v)}catch(e){}}};
 
-<header>
-  <div class="logo"><span class="cn">游戏合集</span><span class="en">GAME&nbsp;HUB</span></div>
-  <div class="sub">选一个游戏开始吧</div>
-</header>
+/* ---- 音效（Web Audio 合成） ---- */
+const SoundManager=(()=>{
+ let ctx=null,bgmTimer=null,bgmOn=true;
+ function ensureCtx(){try{if(!ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;ctx=new AC()}if(ctx.state==="suspended")ctx.resume();return ctx}catch(e){return null}}
+ function tone(freq,dur,type,vol,slide){type=type||"square";vol=vol==null?0.12:vol;slide=slide||0;const c=ensureCtx();if(!c)return;try{const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(freq,c.currentTime);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,freq+slide),c.currentTime+dur);g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+dur);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur)}catch(e){}}
+ function noise(dur,vol){dur=dur||0.25;vol=vol==null?0.2:vol;const c=ensureCtx();if(!c)return;try{const len=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,len,c.sampleRate),data=buf.getChannelData(0);for(let i=0;i<len;i++)data[i]=(Math.random()*2-1)*(1-i/len);const src=c.createBufferSource();src.buffer=buf;const g=c.createGain();g.gain.setValueAtTime(vol,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+dur);const f=c.createBiquadFilter();f.type="lowpass";f.frequency.value=1200;src.connect(f);f.connect(g);g.connect(c.destination);src.start()}catch(e){}}
+ return{
+  init(){ensureCtx()},shoot(){tone(880,.06,"square",.06,-300)},flame(){tone(180,.08,"sawtooth",.05,-60)},
+  ice(){tone(1200,.2,"sine",.08,400)},lightning(){noise(.18,.15);tone(200,.15,"sawtooth",.08,-100)},
+  split(){tone(660,.07,"triangle",.07,-200);setTimeout(()=>tone(770,.07,"triangle",.07,-200),40)},
+  hit(){tone(520,.05,"square",.07,-150)},kill(){tone(700,.09,"square",.09,250)},
+  explode(){noise(.35,.25);tone(90,.3,"sawtooth",.1,-40)},
+  powerup(){tone(523,.08,"sine",.1);setTimeout(()=>tone(659,.08,"sine",.1),80);setTimeout(()=>tone(784,.12,"sine",.1),160)},
+  hurt(){tone(140,.25,"sawtooth",.12,-60)},
+  levelup(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.12,"triangle",.1),i*90))},
+  gameover(){[400,350,300,200].forEach((f,i)=>setTimeout(()=>tone(f,.2,"sawtooth",.12),i*140))},
+  startBGM(){this.stopBGM();const m=[523,587,659,587,523,440,523,0,659,784,698,659,587,523,587,0];let s=0;bgmTimer=setInterval(()=>{if(!bgmOn)return;const f=m[s%m.length];if(f)tone(f,.18,"triangle",.04);if(s%4===0)tone(110,.12,"sine",.045);s++},200)},
+  stopBGM(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null}},toggleBGM(){bgmOn=!bgmOn;return bgmOn}
+ };
+})();
 
-<main class="grid">
+/* ---- 粒子/特效 ---- */
+const particles=[],floatTexts=[],lightningBolts=[],iceShards=[];
+class Particle{
+ constructor(x,y,opt){opt=opt||{};this.x=x;this.y=y;this.vx=opt.vx!=null?opt.vx:rand(-3,3);this.vy=opt.vy!=null?opt.vy:rand(-4,1);this.life=opt.life!=null?opt.life:rand(20,40);this.maxLife=this.life;this.r=opt.r!=null?opt.r:rand(2,5);this.color=opt.color||"#fff";this.gravity=opt.gravity!=null?opt.gravity:0.08}
+ update(){this.x+=this.vx;this.y+=this.vy;this.vy+=this.gravity;this.life--}
+ draw(ctx){const a=clamp(this.life/this.maxLife,0,1);ctx.globalAlpha=a;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,Math.max(0.5,this.r*a),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+ get dead(){return this.life<=0}
+}
+class FloatText{
+ constructor(x,y,text,color,size){this.x=x;this.y=y;this.text=text;this.color=color||"#fff";this.size=size||16;this.life=45;this.vy=-1.2}
+ update(){this.y+=this.vy;this.vy*=0.96;this.life--}
+ draw(ctx){ctx.globalAlpha=clamp(this.life/30,0,1);ctx.fillStyle=this.color;ctx.font="bold "+this.size+"px sans-serif";ctx.textAlign="center";ctx.fillText(this.text,this.x,this.y);ctx.globalAlpha=1}
+ get dead(){return this.life<=0}
+}
+class LightningBolt{
+ constructor(x1,y1,x2,y2){this.points=[];const seg=8;for(let i=0;i<=seg;i++){const t=i/seg;this.points.push({x:lerp(x1,x2,t)+(i>0&&i<seg?rand(-28,28):0),y:lerp(y1,y2,t)+(i>0&&i<seg?rand(-20,20):0)})}this.life=14;this.maxLife=14}
+ update(){this.life--}
+ draw(ctx){const a=clamp(this.life/this.maxLife,0,1);ctx.save();ctx.globalAlpha=a;ctx.strokeStyle="#ffe94d";ctx.lineWidth=3.5;ctx.shadowColor="#ffe94d";ctx.shadowBlur=12;ctx.beginPath();this.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.strokeStyle="#fff";ctx.lineWidth=1.2;ctx.shadowBlur=0;ctx.beginPath();this.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore()}
+ get dead(){return this.life<=0}
+}
+class IceShard{
+ constructor(x,y){this.x=x;this.y=y;this.vx=rand(-2.5,2.5);this.vy=rand(-3,1);this.life=30;this.size=rand(4,9);this.rot=rand(0,Math.PI)}
+ update(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.06;this.rot+=0.15;this.life--}
+ draw(ctx){ctx.save();ctx.globalAlpha=clamp(this.life/20,0,1);ctx.translate(this.x,this.y);ctx.rotate(this.rot);ctx.fillStyle="#a8e6ff";ctx.beginPath();ctx.moveTo(0,-this.size);ctx.lineTo(this.size*0.6,0);ctx.lineTo(0,this.size);ctx.lineTo(-this.size*0.6,0);ctx.closePath();ctx.fill();ctx.restore()}
+ get dead(){return this.life<=0}
+}
+function spawnExplosion(x,y,color,count,spd){count=count||16;spd=spd||4;for(let i=0;i<count;i++){const ang=rand(0,Math.PI*2),s=rand(1,spd);particles.push(new Particle(x,y,{vx:Math.cos(ang)*s,vy:Math.sin(ang)*s,color,r:rand(2,6),life:rand(18,36)}))}}
+function spawnHitSpark(x,y,color){for(let i=0;i<6;i++){const ang=rand(0,Math.PI*2);particles.push(new Particle(x,y,{vx:Math.cos(ang)*rand(1,3),vy:Math.sin(ang)*rand(1,3),color:color||"#fff",r:rand(1.5,3),life:rand(8,16),gravity:0}))}}
 
-  <a class="card" style="--accent:#e10600" href="f1-arcade.html">
-    <div class="card-icon">🏎️</div>
-    <h2>F1 ARCADE <span class="badge">3D 赛车</span></h2>
-    <p>3D F1 街机赛车，驾驭赛车在赛道上驰骋，体验速度与激情。</p>
-    <div class="tags"><span>3D</span><span>赛车</span><span>单人</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 主角（小豆豆） ---- */
+class Player{
+ constructor(){
+  this.x=W/2;this.y=PLAYER_Y;this.r=20;this.hp=START_HP;this.maxHp=START_HP;
+  this.weapon="normal";this.weaponTimer=0;this.fireTimer=0;this.invuln=0;
+  this.walkPhase=0;this.moving=false;this.blink=0;this.muzzle=0;this.hurtFlash=0;this.drawY=this.y;
+ }
+ update(dt){
+  if(this.weaponTimer>0){this.weaponTimer-=dt;if(this.weaponTimer<=0){this.weapon="normal";this.weaponTimer=0;floatTexts.push(new FloatText(this.x,this.y-40,"武器还原","#aaa",13))}}
+  if(this.fireTimer>0)this.fireTimer-=dt;
+  if(this.invuln>0)this.invuln-=dt;
+  if(this.muzzle>0)this.muzzle-=dt;
+  if(this.hurtFlash>0)this.hurtFlash-=dt;
+  if(this.moving)this.walkPhase+=0.28;else this.walkPhase=lerp(this.walkPhase,0,0.15);
+  this.blink-=dt;if(this.blink<-rand(800,2200))this.blink=120;
+  this.drawY=this.y+Math.sin(performance.now()/350)*2;
+ }
+ draw(ctx){
+  const x=this.x,y=this.drawY!=null?this.drawY:this.y,r=this.r;
+  const bounce=this.moving?Math.abs(Math.sin(this.walkPhase))*4:0;
+  const squish=this.moving?1+Math.sin(this.walkPhase*2)*0.06:1;
+  ctx.save();ctx.translate(x,y-bounce);ctx.scale(1/squish,squish);
+  if(this.invuln>0&&Math.floor(this.invuln/60)%2===0)ctx.globalAlpha=0.45;
+  const grad=ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.1,0,0,r*1.1);
+  grad.addColorStop(0,"#ffe29a");grad.addColorStop(0.55,"#ffb84d");grad.addColorStop(1,"#f28c28");
+  ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(0,0,r*0.95,r*1.05,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(180,90,20,0.55)";ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle="rgba(255,120,120,0.55)";
+  ctx.beginPath();ctx.ellipse(-r*0.5,r*0.25,r*0.22,r*0.14,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(r*0.5,r*0.25,r*0.22,r*0.14,0,0,Math.PI*2);ctx.fill();
+  const eyeY=-r*0.12,blinking=this.blink>0;
+  ctx.fillStyle="#3a2410";
+  if(blinking){ctx.strokeStyle="#3a2410";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-r*0.38,eyeY);ctx.lineTo(-r*0.18,eyeY);ctx.stroke();ctx.beginPath();ctx.moveTo(r*0.18,eyeY);ctx.lineTo(r*0.38,eyeY);ctx.stroke()}
+  else{ctx.beginPath();ctx.ellipse(-r*0.28,eyeY,r*0.13,r*0.17,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(r*0.28,eyeY,r*0.13,r*0.17,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-r*0.24,eyeY-r*0.06,r*0.05,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(r*0.32,eyeY-r*0.06,r*0.05,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle="#8a4b12";ctx.lineWidth=2;ctx.lineCap="round";ctx.beginPath();ctx.arc(0,r*0.28,r*0.22,0.15*Math.PI,0.85*Math.PI);ctx.stroke();
+  ctx.fillStyle="#4d96ff";ctx.beginPath();ctx.moveTo(-r*0.55,-r*0.85);ctx.lineTo(0,-r*1.6);ctx.lineTo(r*0.55,-r*0.85);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#ffe94d";ctx.beginPath();ctx.arc(0,-r*1.62,r*0.14,0,Math.PI*2);ctx.fill();
+  const legSwing=this.moving?Math.sin(this.walkPhase)*6:0;
+  ctx.fillStyle="#e07a1f";
+  ctx.beginPath();ctx.ellipse(-r*0.35+legSwing,r*1.0,r*0.2,r*0.14,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(r*0.35-legSwing,r*1.0,r*0.2,r*0.14,0,0,Math.PI*2);ctx.fill();
+  if(this.muzzle>0){ctx.globalAlpha=clamp(this.muzzle/80,0,1);ctx.fillStyle=WEAPONS[this.weapon].color;ctx.beginPath();ctx.arc(0,-r*1.25,r*0.5+this.muzzle*0.03,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+  if(this.hurtFlash>0){ctx.globalAlpha=clamp(this.hurtFlash/300,0,0.6);ctx.fillStyle="#ff3333";ctx.beginPath();ctx.ellipse(0,0,r,r*1.05,0,0,Math.PI*2);ctx.fill()}
+  ctx.restore();ctx.globalAlpha=1;
+ }
+ hurt(){
+  if(this.invuln>0)return false;
+  this.hp--;this.invuln=1600;this.hurtFlash=300;SoundManager.hurt();
+  spawnExplosion(this.x,this.y,"#ff8888",12,3);return this.hp<=0;
+ }
+ tryFire(game){
+  const w=WEAPONS[this.weapon];
+  if(this.fireTimer>0)return;
+  const rateMul=Math.max(0.55,1-(game.levelMgr.level-1)*0.035);
+  this.fireTimer=w.cd*rateMul;this.muzzle=80;
+  switch(this.weapon){
+   case"normal":
+    game.bullets.push(new Bullet(this.x,this.y-this.r-6,0,-w.bulletSpeed,{dmg:w.dmg,color:w.color,r:5}));
+    SoundManager.shoot();break;
+   case"flame":
+    for(let i=-1;i<=1;i++)game.bullets.push(new Bullet(this.x+i*6,this.y-this.r-4,i*0.9,-w.bulletSpeed,{dmg:w.dmg,color:i===0?"#ff6b35":(i<0?"#ff9f1c":"#ff4500"),r:rand(5,8),maxDist:150,type:"flame"}));
+    SoundManager.flame();break;
+   case"ice":
+    game.bullets.push(new Bullet(this.x,this.y-this.r-6,0,-w.bulletSpeed,{dmg:w.dmg,color:w.color,r:7,type:"ice"}));
+    SoundManager.ice();break;
+   case"lightning":
+    SoundManager.lightning();
+    {const targets=game.enemies.filter(e=>!e.dead);
+     if(targets.length===0)lightningBolts.push(new LightningBolt(this.x,this.y-this.r,this.x,40));
+     else targets.forEach(e=>{lightningBolts.push(new LightningBolt(this.x,this.y-this.r,e.x,e.y));e.takeDamage(w.dmg,game)})}
+    break;
+   case"split":
+    game.bullets.push(new Bullet(this.x,this.y-this.r-6,0,-w.bulletSpeed,{dmg:w.dmg,color:w.color,r:6,type:"split"}));
+    SoundManager.split();break;
+  }
+ }
+}
 
-  <a class="card" style="--accent:#26d07c" href="level-devil-game.html">
-    <div class="card-icon">😇</div>
-    <h2>LEVEL ANGEL <span class="badge">关卡闯关</span></h2>
-    <p>12 个陷阱关卡等你挑战。支持单人、同屏双人和在线联机，看谁先到达出口。</p>
-    <div class="how"><b>操作</b>：W / 空格 跳 · A/D 左右移动 · 双人 P1 用 WASD / P2 用方向键</div>
-    <div class="tags"><span>像素</span><span>双人</span><span>在线联机</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 子弹 ---- */
+class Bullet{
+ constructor(x,y,vx,vy,opt){opt=opt||{};this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.r=opt.r!=null?opt.r:5;this.dmg=opt.dmg!=null?opt.dmg:1;this.color=opt.color||"#ffdd57";this.type=opt.type||"normal";this.maxDist=opt.maxDist||9999;this.traveled=0;this.dead=false;this.phase=rand(0,Math.PI*2);this.splitDone=false}
+ update(dt,game){
+  const ox=this.x,oy=this.y;this.x+=this.vx;this.y+=this.vy;this.traveled+=dist(ox,oy,this.x,this.y);this.phase+=0.3;
+  if(this.y<-30||this.y>H+30||this.x<-30||this.x>W+30)this.dead=true;
+  if(this.traveled>this.maxDist)this.dead=true;
+  if(this.type==="split"&&!this.splitDone&&this.traveled>80){
+   this.splitDone=true;
+   for(let i=-1;i<=1;i++){if(i===0)continue;game.bullets.push(new Bullet(this.x,this.y,i*3.2,-Math.abs(this.vy)*0.85,{dmg:this.dmg,color:this.color,r:4,type:"splitChild"}))}
+   spawnHitSpark(this.x,this.y,"#c77dff");
+  }
+ }
+ draw(ctx){
+  ctx.save();
+  if(this.type==="flame"){
+   ctx.globalAlpha=0.5;ctx.fillStyle="#ff9f1c";ctx.beginPath();ctx.arc(this.x,this.y,this.r*1.6,0,Math.PI*2);ctx.fill();
+   ctx.globalAlpha=0.9;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#fff3b0";ctx.beginPath();ctx.arc(this.x,this.y,this.r*0.45,0,Math.PI*2);ctx.fill();
+  }else if(this.type==="ice"){
+   ctx.shadowColor="#5fd0ff";ctx.shadowBlur=10;ctx.fillStyle="#c9f3ff";ctx.beginPath();
+   for(let i=0;i<6;i++){const a=this.phase+i*Math.PI/3;const px=this.x+Math.cos(a)*this.r,py=this.y+Math.sin(a)*this.r;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}
+   ctx.closePath();ctx.fill();ctx.fillStyle="#5fd0ff";ctx.beginPath();ctx.arc(this.x,this.y,this.r*0.4,0,Math.PI*2);ctx.fill();
+  }else if(this.type==="split"||this.type==="splitChild"){
+   ctx.shadowColor=this.color;ctx.shadowBlur=8;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(this.x-this.r*0.25,this.y-this.r*0.25,this.r*0.35,0,Math.PI*2);ctx.fill();
+  }else{
+   ctx.shadowColor=this.color;ctx.shadowBlur=6;ctx.fillStyle=this.color;ctx.beginPath();ctx.ellipse(this.x,this.y,this.r*0.75,this.r*1.25,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(this.x,this.y-this.r*0.3,this.r*0.3,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();ctx.globalAlpha=1;
+ }
+}
 
-  <a class="card" style="--accent:#ffd166" href="europe-map.html">
-    <div class="card-icon">🗺️</div>
-    <h2>欧罗巴 <span class="badge">地图策略</span></h2>
-    <p>真实欧洲地图上的策略对战：26 国混战，每国三军武器，必须先打光军备才能攻破总部，单人/多人/AI/全欧争霸可选。</p>
-    <div class="how"><b>操作</b>：点击地图选国家 · 点「商店」购买 · 部署部队 · 结束回合</div>
-    <div class="tags"><span>策略</span><span>回合制</span><span>在线联机</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 敌人系统（5种豆豆） ---- */
+class Enemy{
+ constructor(type,x,y,level){
+  level=level||1;const def=ENEMY_TYPES[type];
+  this.type=type;this.x=x;this.y=y;this.r=def.r;
+  this.hp=def.hp+Math.floor(level*0.3);this.maxHp=this.hp;this.score=def.score;this.color=def.color;
+  this.speed=def.speed*(1+level*0.07);this.dead=false;this.frozen=0;
+  this.phase=rand(0,Math.PI*2);this.blinkT=rand(0,2000);this.blinking=false;this.hurtFlash=0;
+  this.baseX=x;this.swayT=rand(0,100);this.dropChance=type==="boss"?1:0.16;this.scoreAwarded=false;
+ }
+ update(dt,game){
+  if(this.hurtFlash>0)this.hurtFlash-=dt;
+  this.phase+=0.05;this.blinkT-=dt;
+  if(this.blinkT<0){this.blinking=true;if(this.blinkT<-150){this.blinking=false;this.blinkT=rand(1500,3500)}}
+  if(this.frozen>0){this.frozen-=dt;return}
+  switch(this.type){
+   case"normal":this.y+=this.speed;this.x+=Math.sin(this.phase)*0.4;break;
+   case"fast":this.y+=this.speed;this.x=this.baseX+Math.sin(this.y*0.045+this.swayT)*70;break;
+   case"hard":this.y+=this.speed*0.9;this.x+=Math.sin(this.phase*0.7)*0.6;break;
+   case"explosive":this.y+=this.speed;this.x+=Math.cos(this.phase*1.2)*0.8;break;
+   case"boss":
+    this.x+=Math.cos(this.phase*0.6)*this.speed*2.2;this.x=clamp(this.x,this.r+10,W-this.r-10);
+    if(Math.random()<0.002)this.y+=8;if(this.y>H*0.45)this.y-=0.5;break;
+  }
+  if(this.y>H+this.r+20)this.dead=true;
+  if(this.x<-80||this.x>W+80)this.dead=true;
+ }
+ takeDamage(dmg,game){
+  if(this.dead)return;this.hp-=dmg;this.hurtFlash=120;SoundManager.hit();spawnHitSpark(this.x,this.y,this.color);
+  if(this.hp<=0)this.die(game);
+ }
+ freeze(ms){this.frozen=ms}
+ die(game){
+  this.dead=true;SoundManager.kill();
+  spawnExplosion(this.x,this.y,this.color,this.type==="boss"?36:16,this.type==="boss"?6:4);
+  floatTexts.push(new FloatText(this.x,this.y-10,"+"+game.addKillScore(this),"#fff",this.type==="boss"?22:15));
+  if(this.type==="explosive"){
+   SoundManager.explode();
+   game.bursts.push(new Burst(this.x,this.y,ENEMY_TYPES.explosive.explodeR,1));
+   spawnExplosion(this.x,this.y,"#ff9f1c",24,6);
+   game.enemies.forEach(e=>{if(e!==this&&!e.dead&&dist(e.x,e.y,this.x,this.y)<ENEMY_TYPES.explosive.explodeR)e.takeDamage(1,game)});
+  }
+  if(Math.random()<this.dropChance||this.type==="boss")game.powerups.push(PowerUp.random(this.x,this.y));
+  if(this.type==="boss")game.onBossKilled();
+ }
+ draw(ctx){
+  const x=this.x,y=this.y,r=this.r;
+  ctx.save();ctx.translate(x,y);
+  if(this.frozen>0)ctx.globalAlpha=0.85;
+  const flash=this.hurtFlash>0;
+  const grad=ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.1,0,0,r*1.05);
+  if(flash){grad.addColorStop(0,"#ffffff");grad.addColorStop(1,"#cccccc")}
+  else{grad.addColorStop(0,lighten(this.color,40));grad.addColorStop(0.6,this.color);grad.addColorStop(1,darken(this.color,30))}
+  ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(0,0,r*0.95,r*1.02,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,0.25)";ctx.lineWidth=2;ctx.stroke();
+  this.drawFace(ctx,r);
+  if(this.type==="hard")this.drawArmor(ctx,r);
+  if(this.type==="explosive")this.drawBomb(ctx,r);
+  if(this.type==="boss")this.drawCrown(ctx,r);
+  if(this.frozen>0){
+   ctx.globalAlpha=0.45;ctx.fillStyle="#7fdfff";ctx.beginPath();ctx.ellipse(0,0,r*1.15,r*1.2,0,0,Math.PI*2);ctx.fill();
+   ctx.globalAlpha=0.9;ctx.strokeStyle="#e0f7ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,r*1.12,0,Math.PI*2);ctx.stroke();
+   for(let i=0;i<5;i++){const a=this.phase+i*1.25,ix=Math.cos(a)*r*1.05,iy=Math.sin(a)*r*1.05;ctx.fillStyle="#e8fbff";ctx.beginPath();ctx.moveTo(ix,iy-4);ctx.lineTo(ix+3,iy);ctx.lineTo(ix,iy+4);ctx.lineTo(ix-3,iy);ctx.closePath();ctx.fill()}
+  }
+  if(this.hp<this.maxHp){
+   const bw=r*1.6;ctx.fillStyle="rgba(0,0,0,0.45)";ctx.fillRect(-bw/2,-r-12,bw,5);
+   ctx.fillStyle=this.hp/this.maxHp>0.4?"#7CFC00":"#ff4d4d";ctx.fillRect(-bw/2,-r-12,bw*clamp(this.hp/this.maxHp,0,1),5);
+  }
+  ctx.restore();ctx.globalAlpha=1;
+ }
+ drawFace(ctx,r){
+  const eyeY=-r*0.1,eR=r*0.14;
+  if(this.blinking&&this.type==="fast"){ctx.strokeStyle="#333";ctx.lineWidth=2;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-r*0.4,eyeY);ctx.lineTo(-r*0.15,eyeY);ctx.stroke();ctx.beginPath();ctx.moveTo(r*0.15,eyeY);ctx.lineTo(r*0.4,eyeY);ctx.stroke()}
+  else{ctx.fillStyle="#2d1b0e";ctx.beginPath();ctx.ellipse(-r*0.28,eyeY,eR,eR*1.25,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(r*0.28,eyeY,eR,eR*1.25,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-r*0.24,eyeY-eR*0.4,eR*0.4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(r*0.32,eyeY-eR*0.4,eR*0.4,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle="#5a2d0c";ctx.lineWidth=2;ctx.lineCap="round";
+  if(this.type==="explosive"){ctx.beginPath();ctx.arc(0,r*0.3,r*0.12,0,Math.PI*2);ctx.stroke()}
+  else if(this.type==="boss"){ctx.beginPath();ctx.moveTo(-r*0.28,r*0.3);ctx.quadraticCurveTo(0,r*0.5,r*0.28,r*0.3);ctx.stroke();ctx.fillStyle="#fff";ctx.beginPath();ctx.moveTo(-r*0.12,r*0.34);ctx.lineTo(-r*0.06,r*0.46);ctx.lineTo(0,r*0.34);ctx.fill()}
+  else{ctx.beginPath();ctx.arc(0,r*0.25,r*0.18,0.1*Math.PI,0.9*Math.PI);ctx.stroke()}
+  ctx.fillStyle="rgba(255,100,100,0.4)";
+  ctx.beginPath();ctx.ellipse(-r*0.5,r*0.2,r*0.16,r*0.1,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(r*0.5,r*0.2,r*0.16,r*0.1,0,0,Math.PI*2);ctx.fill();
+ }
+ drawArmor(ctx,r){
+  ctx.fillStyle="rgba(120,140,160,0.85)";ctx.strokeStyle="rgba(200,220,240,0.9)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,-r*0.15,r*0.85,Math.PI*1.05,Math.PI*1.95);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(-r*0.75,r*0.1,r*0.25,r*0.35,-0.4,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(r*0.75,r*0.1,r*0.25,r*0.35,0.4,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#ffe94d";[-0.5,-0.15,0.15,0.5].forEach(o=>{ctx.beginPath();ctx.arc(o*r*0.7,-r*0.7,2,0,Math.PI*2);ctx.fill()});
+ }
+ drawBomb(ctx,r){
+  ctx.fillStyle="#2b2b2b";ctx.beginPath();ctx.arc(0,r*0.15,r*0.72,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#555";ctx.beginPath();ctx.arc(-r*0.2,0,r*0.2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#c9a227";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-r*0.5);ctx.quadraticCurveTo(r*0.3,-r*1.0,r*0.05,-r*1.15);ctx.stroke();
+  const spark=Math.sin(performance.now()/60)*0.5+0.5;ctx.fillStyle=spark>0.5?"#ffdd57":"#ff6b35";
+  ctx.beginPath();ctx.arc(r*0.05,-r*1.15,4+spark*3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(255,220,50,0.6)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,r*0.15,r*0.72,0.2,0.8);ctx.stroke();
+  ctx.beginPath();ctx.arc(0,r*0.15,r*0.72,Math.PI+0.2,Math.PI+0.8);ctx.stroke();
+ }
+ drawCrown(ctx,r){
+  ctx.save();ctx.translate(0,-r*0.95);ctx.fillStyle="#ffd700";ctx.strokeStyle="#b8860b";ctx.lineWidth=2;
+  const cw=r*0.75;ctx.beginPath();ctx.moveTo(-cw,4);ctx.lineTo(-cw,-6);ctx.lineTo(-cw*0.5,4);ctx.lineTo(0,-14);ctx.lineTo(cw*0.5,4);ctx.lineTo(cw,-6);ctx.lineTo(cw,4);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle="#ff477e";ctx.beginPath();ctx.arc(0,-4,3.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#4dd0ff";ctx.beginPath();ctx.arc(-cw*0.55,-2,2.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(cw*0.55,-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ }
+}
 
-  <a class="card" style="--accent:#38bdf8" href="guess-the-country/">
-    <div class="card-icon">🌍</div>
-    <h2>猜国家 <span class="badge">世界地图</span></h2>
-    <p>四种玩法：给国名点地图、给国旗点国家、看国名四选一挑国旗、看国旗四选一挑国名。鼠标移到任何国家，右侧立刻显示该国国旗、中英文名和资料；答错会标出正确答案，答对连击加分。另有 60 秒闪电模式与内置学习模式。</p>
-    <div class="how"><b>操作</b>：点击地图上的国家或四选一作答 · 滚轮缩放 / 拖动平移 · 卡住了可看广告解锁提示 · 内置学习模式</div>
-    <div class="tags"><span>地图</span><span>地理</span><span>四选一</span><span>闪电模式</span><span>学习模式</span><span>离线可玩</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* 爆炸冲击波 */
+class Burst{
+ constructor(x,y,radius,dmg){this.x=x;this.y=y;this.radius=radius;this.dmg=dmg;this.t=0;this.dur=25;this.hit=false}
+ update(game){this.t++;if(this.t===8&&!this.hit){if(dist(game.player.x,game.player.y,this.x,this.y)<this.radius+game.player.r){game.player.hurt();this.hit=true}}}
+ draw(ctx){const p=clamp(this.t/this.dur,0,1);ctx.save();ctx.globalAlpha=0.7*(1-p);ctx.strokeStyle="#ff6b35";ctx.lineWidth=5;ctx.beginPath();ctx.arc(this.x,this.y,this.radius*p,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=0.35*(1-p);ctx.fillStyle="#ffdd57";ctx.beginPath();ctx.arc(this.x,this.y,this.radius*p*0.85,0,Math.PI*2);ctx.fill();ctx.restore()}
+ get dead(){return this.t>=this.dur}
+}
 
-  <a class="card" style="--accent:#ff6248" href="sunlane-sprint/index.html">
-    <div class="card-icon">🌅</div>
-    <h2>SUN LANE SPRINT <span class="badge">3D 卡丁车</span></h2>
-    <p>阳光海岸与樱花山谷的卡丁车竞速。选好座驾、掌握漂移，向领奖台冲刺。</p>
-    <div class="tags"><span>3D</span><span>赛车</span><span>竞速</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 道具 ---- */
+class PowerUp{
+ constructor(x,y,kind){this.x=x;this.y=y;this.kind=kind;this.r=14;this.vy=1.6;this.phase=rand(0,Math.PI*2);this.dead=false}
+ static random(x,y){
+  const roll=Math.random();
+  if(roll<0.1)return new PowerUp(x,y,"life");
+  if(roll<0.22)return new PowerUp(x,y,"score");
+  return new PowerUp(x,y,WEAPON_KEYS[randI(1,WEAPON_KEYS.length-1)]);
+ }
+ update(){this.y+=this.vy;this.phase+=0.1;if(this.y>H+30)this.dead=true}
+ draw(ctx){
+  const bob=Math.sin(this.phase)*3,x=this.x,y=this.y,r=this.r,kind=this.kind;
+  ctx.save();ctx.translate(x,y+bob);
+  const base=kind==="life"?"#ff5c5c":(kind==="score"?"#ffd166":(WEAPONS[kind]?WEAPONS[kind].color:"#fff"));
+  ctx.globalAlpha=0.35;ctx.fillStyle=base;ctx.beginPath();ctx.arc(0,0,r*1.7,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle=kind==="life"?"#ff5c5c":(kind==="score"?"#ffb703":base);
+  ctx.beginPath();for(let i=0;i<8;i++){const a=this.phase*0.5+i*Math.PI/4,rr=i%2===0?r:r*0.72;const px=Math.cos(a)*rr,py=Math.sin(a)*rr;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle="#fff";ctx.font="bold 13px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  const icons={life:"♥",score:"$",flame:"F",ice:"I",lightning:"L",split:"S"};
+  ctx.fillText(icons[kind]||"?",0,1);ctx.restore();ctx.textBaseline="alphabetic";
+ }
+ apply(game){
+  SoundManager.powerup();
+  if(this.kind==="life"){
+   if(game.player.hp<game.player.maxHp){game.player.hp++;floatTexts.push(new FloatText(this.x,this.y,"生命+1","#ff8fab",16))}
+   else{game.score+=200;floatTexts.push(new FloatText(this.x,this.y,"生命已满 +200","#ffd166",14))}
+  }else if(this.kind==="score"){game.score+=150;floatTexts.push(new FloatText(this.x,this.y,"+150","#ffd166",16))}
+  else{game.player.weapon=this.kind;game.player.weaponTimer=WEAPON_DURATION;floatTexts.push(new FloatText(this.x,this.y-15,WEAPONS[this.kind].name+" 15s",WEAPONS[this.kind].color,15))}
+  spawnExplosion(this.x,this.y,"#fff",10,2);this.dead=true;
+ }
+}
 
-  <a class="card" style="--accent:#e8b04b" href="memory-craft.html">
-    <div class="card-icon">🧠</div>
-    <h2>记忆速建 <span class="badge">3D 记忆</span></h2>
-    <p>第一人称走进场地，看一眼目标结构，然后凭记忆用方块把它搭出来。越准越高分。</p>
-    <div class="how"><b>操作</b>：WASD 移动 · 空格跳 · 鼠标转向 · 左键放置 / 右键删除 · 1-6 选色</div>
-    <div class="tags"><span>3D</span><span>记忆</span><span>单人</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 关卡管理 ---- */
+class LevelManager{
+ constructor(){this.level=1;this.spawnTimer=0;this.spawnInterval=1400;this.enemiesToSpawn=0;this.spawned=0;this.bossSpawned=false;this.levelCleared=false;this.clearedTimer=0;this.startLevel(1)}
+ startLevel(lv){
+  this.level=lv;this.spawned=0;this.enemiesToSpawn=8+lv*2;
+  this.spawnInterval=Math.max(400,1400-lv*40);this.spawnTimer=800;
+  this.bossSpawned=false;this.levelCleared=false;this.clearedTimer=0;
+  if(lv>1){SoundManager.levelup();floatTexts.push(new FloatText(W/2,H/2-40,"第 "+lv+" 关！","#ffe94d",30))}
+ }
+ update(dt,game){
+  if(this.levelCleared){this.clearedTimer-=dt;if(this.clearedTimer<=0)this.startLevel(this.level+1);return}
+  this.spawnTimer-=dt;
+  if(this.spawnTimer<=0&&this.spawned<this.enemiesToSpawn){this.spawnTimer=this.spawnInterval;this.spawnEnemy(game);this.spawned++}
+  if(this.spawned>=this.enemiesToSpawn&&game.enemies.filter(e=>!e.dead).length===0){
+   this.levelCleared=true;this.clearedTimer=1500;game.score+=100*this.level;
+   floatTexts.push(new FloatText(W/2,H/2,"关卡通过！ +"+(100*this.level),"#7CFC00",22));
+  }
+ }
+ spawnEnemy(game){
+  // 每关最后一只：头目豆豆
+  if(!this.bossSpawned&&this.spawned>=this.enemiesToSpawn-1){
+   this.bossSpawned=true;game.enemies.push(new Enemy("boss",W/2,-50,this.level));
+   floatTexts.push(new FloatText(W/2,80,"BOSS 来袭！","#ff477e",24));return;
+  }
+  const pool=["normal","fast"];
+  if(this.level>=2)pool.push("hard");
+  if(this.level>=3)pool.push("explosive");
+  if(this.level>=5)pool.push("fast","hard","explosive");
+  game.enemies.push(new Enemy(pool[randI(0,pool.length-1)],rand(40,W-40),-30,this.level));
+ }
+}
 
-  <a class="card" style="--accent:#7ce88c" href="micro-world-survival.html">
-    <div class="card-icon">🐜</div>
-    <h2>微缩世界生存 <span class="badge">体素生存</span></h2>
-    <p>你被缩小到蚂蚁大小，掉进后院草丛。喝水进食、砍伐挖矿、制作工具搭建基地，抵御随生存时间变强的多种敌人，在随机天气下完成生存目标。</p>
-    <div class="how"><b>操作</b>：WASD 移动 · 空格跳 · 鼠标转向 · 左键挖/攻击 · 右键建 · Q 拆</div>
-    <div class="tags"><span>3D</span><span>体素</span><span>生存</span><span>建造</span><span>昼夜</span><span>天气</span><span>音效</span><span>存档</span></div>
-    <div class="play">进入游戏</div>
-  </a>
+/* ---- 输入（触摸+键盘） ---- */
+const Input={
+ keys:{},touchX:null,touchY:null,touchActive:false,tapFire:false,
+ init(canvas){
+  window.addEventListener("keydown",e=>{
+   this.keys[e.code]=true;
+   if(e.code==="Space"||e.code==="KeyJ")this.tapFire=true;
+   if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].indexOf(e.code)>=0)e.preventDefault();
+  });
+  window.addEventListener("keyup",e=>{this.keys[e.code]=false});
+  const toGame=(cx,cy)=>{const rect=canvas.getBoundingClientRect();return{x:(cx-rect.left)*(W/rect.width),y:(cy-rect.top)*(H/rect.height)}};
+  const onDown=(cx,cy)=>{const p=toGame(cx,cy);this.touchX=p.x;this.touchY=p.y;this.touchActive=true;this.tapFire=true;this.downX=p.x;this.downY=p.y};
+  const onMove=(cx,cy)=>{if(!this.touchActive)return;const p=toGame(cx,cy);this.touchX=p.x;this.touchY=p.y};
+  const onUp=()=>{this.touchActive=false;this.touchX=null};
+  canvas.addEventListener("touchstart",e=>{e.preventDefault();const t=e.changedTouches[0];onDown(t.clientX,t.clientY)},{passive:false});
+  canvas.addEventListener("touchmove",e=>{e.preventDefault();const t=e.changedTouches[0];onMove(t.clientX,t.clientY)},{passive:false});
+  canvas.addEventListener("touchend",e=>{e.preventDefault();onUp()},{passive:false});
+  canvas.addEventListener("touchcancel",()=>onUp());
+  canvas.addEventListener("mousedown",e=>onDown(e.clientX,e.clientY));
+  canvas.addEventListener("mousemove",e=>onMove(e.clientX,e.clientY));
+  canvas.addEventListener("mouseup",()=>onUp());
+  canvas.addEventListener("mouseleave",()=>onUp());
+ },
+ consumeTap(){const v=this.tapFire;this.tapFire=false;return v},
+ isLeft(){return!!(this.keys.ArrowLeft||this.keys.KeyA)},
+ isRight(){return!!(this.keys.ArrowRight||this.keys.KeyD)},
+ weaponKey(){
+  if(this.keys.Digit1)return"normal";if(this.keys.Digit2)return"flame";if(this.keys.Digit3)return"ice";
+  if(this.keys.Digit4)return"lightning";if(this.keys.Digit5)return"split";return null;
+ },
+ consumeWeapon(){const k=this.weaponKey();if(k)this.keys["Digit"+(WEAPON_KEYS.indexOf(k)+1)]=false;return k}
+};
 
-  <div class="card disabled" style="--accent:#4da6ff">
-    <div class="card-icon">⚽</div>
-    <h2>足球对决 <span class="badge">开发中</span></h2>
-    <p>2D 街机足球：控制蓝队前锋带球过人，大力射门，与电脑红队在 60 秒内决出胜负。</p>
-    <div class="how"><b>操作</b>：WASD / 方向键移动 · 靠近球自动带球 · 空格射门</div>
-    <div class="tags"><span>2D</span><span>体育</span><span>开发中</span></div>
-  </div>
+/* ---- 游戏主体 ---- */
+class Game{
+ constructor(canvas){
+  this.canvas=canvas;this.ctx=canvas.getContext("2d");
+  this.state="menu";this.score=0;this.hiScore=Storage.get("bean_hiscore",0)||0;
+  this.combo=0;this.comboTimer=0;this.bgOffset=0;
+  this.player=new Player();this.bullets=[];this.enemies=[];this.powerups=[];this.bursts=[];
+  this.levelMgr=new LevelManager();this.lastTime=performance.now();
+  this.menuBtn=null;this.overBtns=null;this.shake=0;
+  Input.init(canvas);this.loop=this.loop.bind(this);requestAnimationFrame(this.loop);
+ }
+ start(){
+  this.state="playing";this.score=0;this.combo=0;this.comboTimer=0;this.shake=0;
+  this.player=new Player();this.bullets=[];this.enemies=[];this.powerups=[];this.bursts=[];
+  particles.length=0;floatTexts.length=0;lightningBolts.length=0;iceShards.length=0;
+  this.levelMgr=new LevelManager();
+  SoundManager.init();SoundManager.startBGM();
+ }
+ gameOver(){
+  this.state="gameover";SoundManager.gameover();SoundManager.stopBGM();
+  if(this.score>this.hiScore){this.hiScore=this.score;Storage.set("bean_hiscore",this.hiScore)}
+  spawnExplosion(this.player.x,this.player.y,"#ffb84d",40,6);
+ }
+ onBossKilled(){
+  floatTexts.push(new FloatText(W/2,H/3,"BOSS 击破！","#ffe94d",28));
+  for(let i=0;i<3;i++)this.powerups.push(PowerUp.random(rand(60,W-60),rand(80,200)));
+ }
+ calcScore(base){
+  this.combo=this.comboTimer>0?this.combo+1:1;this.comboTimer=COMBO_TIMEOUT;
+  let s=Math.floor(base*(1+this.combo*0.1));
+  const d=dist(this.player.x,this.player.y,this.lastKillX||0,this.lastKillY||0);
+  if(d>REMOTE_KILL_DIST)s+=20;
+  return s;
+ }
+ addKillScore(e){this.lastKillX=e.x;this.lastKillY=e.y;const pts=this.calcScore(e.score);this.score+=pts;return pts}
+ update(dt){
+  this.bgOffset=(this.bgOffset+0.4)%40;
+  particles.forEach(p=>p.update());floatTexts.forEach(t=>t.update());
+  lightningBolts.forEach(b=>b.update());iceShards.forEach(s=>s.update());
+  this.bursts.forEach(b=>b.update(this));
+  for(let i=particles.length-1;i>=0;i--)if(particles[i].dead)particles.splice(i,1);
+  for(let i=floatTexts.length-1;i>=0;i--)if(floatTexts[i].dead)floatTexts.splice(i,1);
+  for(let i=lightningBolts.length-1;i>=0;i--)if(lightningBolts[i].dead)lightningBolts.splice(i,1);
+  for(let i=iceShards.length-1;i>=0;i--)if(iceShards[i].dead)iceShards.splice(i,1);
+  for(let i=this.bursts.length-1;i>=0;i--)if(this.bursts[i].dead)this.bursts.splice(i,1);
+  if(this.shake>0)this.shake-=dt;
+  if(this.state!=="playing")return;
+  if(this.comboTimer>0)this.comboTimer-=dt;else this.combo=0;
+  const p=this.player;
+  p.moving=false;
+  if(Input.isLeft()){p.x-=PLAYER_SPEED;p.moving=true}
+  if(Input.isRight()){p.x+=PLAYER_SPEED;p.moving=true}
+  if(Input.touchActive&&Input.touchX!=null){
+   const dx=Input.touchX-p.x;
+   if(Math.abs(dx)>4){p.x+=clamp(dx*0.18,-PLAYER_SPEED,PLAYER_SPEED);p.moving=true}
+  }
+  p.x=clamp(p.x,p.r+5,W-p.r-5);
+  const wk=Input.consumeWeapon();
+  if(wk&&p.weapon!==wk){p.weapon=wk;p.weaponTimer=wk==="normal"?0:WEAPON_DURATION;SoundManager.powerup()}
+  Input.consumeTap();
+  p.tryFire(this);
+  p.update(dt);
+  this.bullets.forEach(b=>b.update(dt,this));
+  for(let i=this.bullets.length-1;i>=0;i--)if(this.bullets[i].dead)this.bullets.splice(i,1);
+  for(let i=this.enemies.length-1;i>=0;i--)if(this.enemies[i].dead)this.enemies.splice(i,1);
+  this.enemies.forEach(e=>e.update(dt,this));
+  for(let i=this.enemies.length-1;i>=0;i--){
+   const e=this.enemies[i];
+   if(e.dead){this.enemies.splice(i,1);continue}
+   for(let j=this.bullets.length-1;j>=0;j--){
+    const b=this.bullets[j];if(b.dead)continue;
+    if(hitCircle(e,b)){
+     b.dead=true;
+     if(b.type==="ice"){e.freeze(3000);for(let k=0;k<8;k++)iceShards.push(new IceShard(e.x,e.y));floatTexts.push(new FloatText(e.x,e.y-e.r-8,"冻结!","#5fd0ff",13))}
+     e.takeDamage(b.dmg,this);
+     break;
+    }
+   }
+   if(!e.dead&&e.frozen<=0&&hitCircle(e,p)){
+    const dead=p.hurt();this.shake=250;e.dead=true;spawnExplosion(e.x,e.y,e.color,12,3);
+    if(dead)this.gameOver();
+   }
+  }
+  this.powerups.forEach(u=>u.update());
+  for(let i=this.powerups.length-1;i>=0;i--){
+   const u=this.powerups[i];
+   if(u.dead){this.powerups.splice(i,1);continue}
+   if(dist(u.x,u.y,p.x,p.y)<u.r+p.r+6){u.apply(this);this.powerups.splice(i,1)}
+  }
+  this.levelMgr.update(dt,this);
+ }
+ drawBackground(ctx){
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,"#ff9a3c");grad.addColorStop(0.5,"#ffb347");grad.addColorStop(1,"#ffcc70");
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.globalAlpha=0.15;ctx.fillStyle="#fff";
+  for(let i=0;i<12;i++){
+   const x=(i*97+Math.sin(this.bgOffset*0.02+i)*30)%W;
+   const y=(i*53+this.bgOffset*1.2+i*i*17)%(H+40)-20;
+   ctx.beginPath();ctx.arc(x,y,8+(i%3)*6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+ }
+ drawUI(ctx){
+  const p=this.player;
+  ctx.fillStyle="rgba(0,0,0,0.25)";ctx.fillRect(0,0,W,58);
+  ctx.fillStyle="#fff";ctx.font="bold 20px sans-serif";ctx.textAlign="left";ctx.textBaseline="middle";
+  ctx.fillText("分数 "+this.score,12,18);
+  ctx.font="12px sans-serif";ctx.fillStyle="rgba(255,255,255,0.8)";
+  ctx.fillText("最高 "+this.hiScore,12,40);
+  ctx.textAlign="center";ctx.fillStyle="#ffe94d";ctx.font="bold 18px sans-serif";
+  ctx.fillText("第 "+this.levelMgr.level+" 关",W/2,20);
+  if(this.combo>1&&this.comboTimer>0){ctx.fillStyle="#ff6b9d";ctx.font="bold 14px sans-serif";ctx.fillText("连击 x"+this.combo,W/2,42)}
+  ctx.textAlign="right";
+  for(let i=0;i<p.maxHp;i++){
+   ctx.font="18px sans-serif";ctx.fillStyle=i<p.hp?"#ff5c5c":"rgba(255,255,255,0.3)";
+   ctx.fillText("♥",W-18-i*22,18);
+  }
+  const w=WEAPONS[p.weapon];ctx.font="bold 13px sans-serif";ctx.fillStyle=w.color;
+  let label=w.icon+" "+w.name;
+  if(p.weaponTimer>0)label+=" "+Math.ceil(p.weaponTimer/1000)+"s";
+  ctx.fillText(label,W-12,42);
+  // 武器切换栏
+  const barY=H-36,slotW=80;
+  ctx.fillStyle="rgba(0,0,0,0.28)";ctx.fillRect(0,barY-8,W,44);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  WEAPON_KEYS.forEach((k,i)=>{
+   const cx=46+i*slotW;
+   const active=p.weapon===k;
+   ctx.fillStyle=active?WEAPONS[k].color:"rgba(255,255,255,0.18)";
+   ctx.beginPath();ctx.arc(cx,barY+10,16,0,Math.PI*2);ctx.fill();
+   if(active){ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke()}
+   ctx.fillStyle=active?"#333":"#fff";ctx.font="bold 12px sans-serif";
+   ctx.fillText(WEAPONS[k].icon,cx,barY+10);
+   ctx.fillStyle="rgba(255,255,255,0.7)";ctx.font="10px sans-serif";
+   ctx.fillText(String(i+1),cx,barY+30);
+  });
+ }
+ drawButton(ctx,x,y,w,h,text,color){
+  ctx.save();
+  ctx.fillStyle=color;ctx.shadowColor="rgba(0,0,0,0.3)";ctx.shadowBlur=8;ctx.shadowOffsetY=3;
+  ctx.beginPath();ctx.moveTo(x+14,y);ctx.arcTo(x+w,y,x+w,y+h,14);ctx.arcTo(x+w,y+h,x,y+h,14);ctx.arcTo(x,y+h,x,y,14);ctx.arcTo(x,y,x+w,y,14);ctx.closePath();ctx.fill();
+  ctx.shadowBlur=0;ctx.strokeStyle="rgba(255,255,255,0.5)";ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle="#fff";ctx.font="bold 20px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(text,x+w/2,y+h/2+1);ctx.restore();
+ }
+ drawMenu(ctx){
+  ctx.fillStyle="rgba(0,0,0,0.45)";ctx.fillRect(0,0,W,H);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="#fff";ctx.font="bold 34px sans-serif";
+  ctx.strokeStyle="#c45c26";ctx.lineWidth=6;
+  ctx.strokeText("可爱豆豆射击",W/2,220);ctx.fillText("可爱豆豆射击",W/2,220);
+  ctx.font="15px sans-serif";ctx.fillStyle="#ffe94d";
+  ctx.fillText("左右移动 · 自动射击 · 收集武器",W/2,270);
+  this.drawButton(ctx,W/2-90,320,180,56,"开始游戏","#ff6b35");
+  this.menuBtn={x:W/2-90,y:320,w:180,h:56};
+  ctx.fillStyle="rgba(255,255,255,0.85)";ctx.font="13px sans-serif";
+  ctx.fillText("触屏拖动 / 方向键移动 · 1-5切换武器",W/2,410);
+  ctx.fillText("最高分："+this.hiScore,W/2,440);
+  // 预览敌人
+  const demo=[["normal",80],["fast",160],["hard",240],["explosive",320],["boss",380]];
+  demo.forEach((d,i)=>{
+   const e=new Enemy(d[0],d[1],500,1);e.draw(ctx);
+  });
+ }
+ drawGameOver(ctx){
+  ctx.fillStyle="rgba(0,0,0,0.55)";ctx.fillRect(0,0,W,H);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="#ff5c5c";ctx.font="bold 38px sans-serif";ctx.fillText("游戏结束",W/2,200);
+  ctx.fillStyle="#fff";ctx.font="bold 24px sans-serif";ctx.fillText("分数："+this.score,W/2,260);
+  ctx.font="18px sans-serif";ctx.fillStyle="#ffd166";ctx.fillText("最高分："+this.hiScore,W/2,300);
+  ctx.fillStyle="rgba(255,255,255,0.85)";ctx.fillText("到达关卡："+this.levelMgr.level,W/2,335);
+  this.drawButton(ctx,W/2-90,380,180,56,"重新开始","#4ecdc4");
+  this.drawButton(ctx,W/2-90,450,180,48,"返回菜单","#8888aa");
+  this.overBtns={restart:{x:W/2-90,y:380,w:180,h:56},menu:{x:W/2-90,y:450,w:180,h:48}};
+ }
+ draw(){
+  const ctx=this.ctx;
+  ctx.save();
+  if(this.shake>0)ctx.translate(rand(-3,3)*(this.shake/250),rand(-3,3)*(this.shake/250));
+  this.drawBackground(ctx);
+  this.powerups.forEach(u=>u.draw(ctx));
+  this.enemies.forEach(e=>e.draw(ctx));
+  if(this.state==="playing")this.player.draw(ctx);
+  this.bullets.forEach(b=>b.draw(ctx));
+  this.bursts.forEach(b=>b.draw(ctx));
+  iceShards.forEach(s=>s.draw(ctx));
+  lightningBolts.forEach(b=>b.draw(ctx));
+  particles.forEach(p=>p.draw(ctx));
+  floatTexts.forEach(t=>t.draw(ctx));
+  ctx.restore();
+  if(this.state==="playing")this.drawUI(ctx);
+  if(this.state==="menu")this.drawMenu(ctx);
+  if(this.state==="gameover")this.drawGameOver(ctx);
+ }
+ handleClick(cx,cy){
+  const rect=this.canvas.getBoundingClientRect();
+  const x=(cx-rect.left)*(W/rect.width),y=(cy-rect.top)*(H/rect.height);
+  if(this.state==="menu"&&this.menuBtn){
+   const b=this.menuBtn;
+   if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h){SoundManager.init();this.start()}
+  }else if(this.state==="playing"){
+   // 点击底部武器栏切换
+   if(y>=H-44){
+    WEAPON_KEYS.forEach((k,i)=>{
+     const bx=46+i*80;
+     if(Math.abs(x-bx)<28){this.player.weapon=k;this.player.weaponTimer=k==="normal"?0:WEAPON_DURATION;SoundManager.powerup()}
+    });
+   }
+  }else if(this.state==="gameover"&&this.overBtns){
+   const r=this.overBtns.restart,m=this.overBtns.menu;
+   if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)this.start();
+   else if(x>=m.x&&x<=m.x+m.w&&y>=m.y&&y<=m.y+m.h){this.state="menu";SoundManager.stopBGM()}
+  }
+ }
+ loop(t){
+  const dt=Math.min(33,t-this.lastTime||16);this.lastTime=t;
+  this.update(dt);this.draw();requestAnimationFrame(this.loop);
+ }
+}
 
-  <a class="card" style="--accent:#ff5a36" href="china-map.html">
-    <div class="card-icon">🇨🇳</div>
-    <h2>中国地图 <span class="badge">省份展示</span></h2>
-    <p>交互式中国地图：不同颜色代表不同省级行政区，悬停查看各省份位置与分布。</p>
-    <div class="tags"><span>地图</span><span>交互</span><span>单人</span></div>
-    <div class="play">进入地图</div>
-  </a>
-
-  <a class="card" style="--accent:#c99a2e" href="china-war-game.html">
-    <div class="card-icon">🐉</div>
-    <h2>古代战争 <span class="badge">逐省争霸</span></h2>
-    <p>在中国地图上逐省争霸：选择初始省份，征兵、采矿、科技研发、外交结盟，逐省攻占、统一天下。</p>
-    <div class="how"><b>操作</b>：点击省份选择 | 征兵·采资源·研发·外交 · 攻占相邻省份</div>
-    <div class="tags"><span>地图</span><span>策略</span><span>战争</span><span>单机</span></div>
-    <div class="play">进入游戏</div>
-  </a>
-
-  <a class="card" style="--accent:#26d07c" href="star-sandbox.html">
-    <div class="card-icon">🌌</div>
-    <h2>星群沙盘 <span class="badge">经营肉鸽</span></h2>
-    <p>你是流浪星球的意识：铺设地形、培育生命、抵御天灾，在星球熄灭前刷出最高的生态积分。</p>
-    <div class="tags"><span>2D</span><span>模拟经营</span><span>肉鸽</span><span>跨平台</span></div>
-    <div class="play">进入游戏</div>
-  </a>
-
-  <a class="card" style="--accent:#d9822b" href="turret-battle.html">
-    <div class="card-icon">🪖</div>
-    <h2>坦克战争 <span class="badge">炮击对战</span></h2>
-    <p>俯视视角的炮击对战：调整角度与力度发射炮弹，考虑风向与地形，与 AI 炮台互轰，获胜赚取材料解锁更强战车。</p>
-    <div class="how"><b>操作</b>：← → 调整角度 · ↑ ↓ 调整力度 · 空格 开火</div>
-    <div class="tags"><span>2D</span><span>炮击</span><span>对战</span><span>单机</span></div>
-    <div class="play">进入游戏</div>
-  </a>
-
-  <div class="card disabled" style="--accent:#f5a623">
-    <div class="card-icon">💥</div>
-    <h2>撞车模拟器 <span class="badge">开发中</span></h2>
-    <p>驾驶车辆体验碰撞冲击的模拟游戏。正在制作中，敬请期待。</p>
-    <div class="tags"><span>模拟</span><span>驾驶</span><span>开发中</span></div>
-  </div>
-
-  <div class="card disabled" style="--accent:#5b8cff">
-    <div class="card-icon">🚧</div>
-    <h2>更多游戏 <span class="badge">敬请期待</span></h2>
-    <p>新的游戏正在制作中，敬请期待。</p>
-    <div class="tags"><span>开发中</span></div>
-  </div>
-
-</main>
-
-<footer>
-  打开游戏后如需返回，点击浏览器的“后退”按钮即可<br>
-  LEVEL ANGEL 和欧罗巴支持在线联机 · 创建房间后把房间码发给朋友即可对战
-</footer>
-
+/* ---- 启动 ---- */
+const canvas=document.getElementById("gameCanvas");
+const game=new Game(canvas);
+["mousedown","touchstart"].forEach(ev=>{
+ canvas.addEventListener(ev,e=>{
+  e.preventDefault();
+  const pt=e.changedTouches?e.changedTouches[0]:e;
+  game.handleClick(pt.clientX,pt.clientY);
+ },{passive:false});
+});
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden)SoundManager.stopBGM();
+ else if(game.state==="playing")SoundManager.startBGM();
+});
+document.addEventListener("gesturestart",e=>e.preventDefault());
+</script>
 </body>
 </html>
