@@ -560,7 +560,7 @@
         let levelRecorded = false;
         let levelScored = false;
         const levelTimes = {};
-        const TOTAL_LEVELS = 20;
+        const TOTAL_LEVELS = 40;
         
         // ===== 存档、皮肤、成就、计时赛 =====
         const SAVE_KEY = 'levelAngelSave';
@@ -572,12 +572,18 @@
             { id: 'purple', name: '紫罗兰', color: '#a855f7', unlock: 9 },
             { id: 'gold', name: '黄金', color: '#f59e0b', unlock: 12 },
             { id: 'cyan', name: '极光青', color: '#06b6d4', unlock: 15 },
-            { id: 'pink', name: '樱花粉', color: '#ec4899', unlock: 18 }
+            { id: 'pink', name: '樱花粉', color: '#ec4899', unlock: 18 },
+            { id: 'lime', name: '柠檬绿', color: '#a3e635', unlock: 22 },
+            { id: 'orange', name: '烈焰橙', color: '#fb923c', unlock: 28 },
+            { id: 'void', name: '虚空紫', color: '#7c3aed', unlock: 34 },
+            { id: 'rainbow', name: '彩虹', color: '#f472b6', unlock: 40 }
         ];
         const ACHIEVEMENTS = [
             { id: 'first', name: '初次启程', desc: '通过第 1 关' },
             { id: 'halfway', name: '渐入佳境', desc: '通过第 10 关' },
-            { id: 'master', name: '通关大师', desc: '通关全部 20 关' },
+            { id: 'veteran', name: '身经百战', desc: '通过第 20 关' },
+            { id: 'explorer', name: '探索者', desc: '通过第 30 关' },
+            { id: 'master', name: '通关大师', desc: '通关全部 40 关' },
             { id: 'speed5', name: '闪电侠', desc: '任意一关 5 秒内通关' },
             { id: 'speed3', name: '极速传说', desc: '任意一关 3 秒内通关' }
         ];
@@ -617,7 +623,9 @@
             const checks = {
                 first: unlocked >= 1,
                 halfway: unlocked >= 10,
-                master: unlocked >= 20,
+                veteran: unlocked >= 20,
+                explorer: unlocked >= 30,
+                master: unlocked >= 40,
                 speed5: anyBest(t => t <= 5),
                 speed3: anyBest(t => t <= 3)
             };
@@ -740,6 +748,140 @@
             return false;
         }
         
+        // ===== 扩展关卡 21~40（数据驱动）=====
+        // 可达性约束：相邻平台上升 ≤ 约 110px、水平间距 ≤ 约 150px（最大跳跃高度约 141px）。
+        // plats / falling / vanishing 元素为 [x, y, w]；出口电梯坐标为电梯左上角（电梯 64x160，
+        // 底部与最后一块平台顶面对齐，故其 y 需 ≥ 160 以免超出画面上沿）。
+        const EXT_LEVELS = {
+            21: {
+                plats: [[128, 512, 128], [320, 448, 128], [512, 384, 128], [704, 320, 128]],
+                spikes: [{ x: 288, y: 590, minX: 256, maxX: 480, dir: 1, speed: 2.4 }],
+                elevator: { x: 832, y: 160 }
+            },
+            22: {
+                plats: [[128, 512, 160], [352, 448, 160], [576, 384, 160], [768, 320, 112]],
+                spikes: [
+                    { x: 224, y: 590, minX: 160, maxX: 448, dir: 1, speed: 2.6 },
+                    { x: 544, y: 590, minX: 512, maxX: 736, dir: 1, speed: 2.6 }
+                ],
+                elevator: { x: 880, y: 160 }
+            },
+            23: {
+                plats: [[352, 256, 192], [608, 192, 160], [768, 192, 112]],
+                springs: [{ x: 416, y: 590, force: -26 }],
+                spikes: [{ x: 224, y: 590, minX: 160, maxX: 352, dir: 1, speed: 2.4 }],
+                elevator: { x: 880, y: 32 }
+            },
+            24: {
+                plats: [[128, 512, 128], [352, 448, 128], [576, 384, 128], [768, 320, 128]],
+                conveyors: [{ x: 160, y: 590, w: 160, dir: -1 }],
+                spikes: [{ x: 544, y: 590, minX: 512, maxX: 736, dir: 1, speed: 2.8 }],
+                elevator: { x: 896, y: 160 }
+            },
+            25: {
+                ice: true,
+                plats: [[128, 512, 128], [384, 448, 128], [640, 384, 128], [768, 320, 128]],
+                elevator: { x: 896, y: 160 }
+            },
+            26: {
+                inv: true,
+                plats: [[128, 512, 128], [352, 448, 128], [576, 384, 128], [768, 320, 128]],
+                spikes: [{ x: 288, y: 590, minX: 192, maxX: 448, dir: 1, speed: 2.6 }],
+                elevator: { x: 896, y: 160 }
+            },
+            27: {
+                plats: [[128, 512, 128], [832, 272, 64]],
+                falling: [[320, 464, 96], [448, 416, 96], [576, 368, 96], [704, 320, 96]],
+                elevator: { x: 896, y: 112 }
+            },
+            28: {
+                plats: [[128, 512, 128], [832, 272, 64]],
+                vanishing: [[320, 464, 96], [448, 416, 96], [576, 368, 96], [704, 320, 96]],
+                elevator: { x: 896, y: 112 }
+            },
+            29: {
+                plats: [[352, 256, 192], [608, 192, 160], [768, 192, 112]],
+                springs: [{ x: 448, y: 590, force: -26 }],
+                spikes: [
+                    { x: 192, y: 590, minX: 160, maxX: 384, dir: 1, speed: 3.0 },
+                    { x: 704, y: 590, minX: 640, maxX: 832, dir: 1, speed: 3.0 }
+                ],
+                elevator: { x: 880, y: 32 }
+            },
+            30: {
+                plats: [[224, 224, 192], [480, 192, 128], [640, 160, 160]],
+                springs: [{ x: 320, y: 590, force: -26 }],
+                sparks: [],
+                elevator: { x: 800, y: 0 }
+            },
+            31: {
+                plats: [[128, 512, 128], [352, 448, 128], [576, 384, 128], [768, 320, 128]],
+                conveyors: [{ x: 160, y: 590, w: 192, dir: -1 }],
+                spikes: [{ x: 448, y: 590, minX: 416, maxX: 640, dir: 1, speed: 3.0 }],
+                elevator: { x: 896, y: 160 }
+            },
+            32: {
+                ice: true,
+                plats: [[128, 512, 128], [384, 448, 128], [640, 384, 128], [768, 320, 128]],
+                moving: [{ x: 192, y: 400, minX: 160, maxX: 512, dir: 1, speed: 1.6 }],
+                elevator: { x: 896, y: 160 }
+            },
+            33: {
+                inv: true,
+                plats: [[128, 512, 128], [352, 448, 128], [576, 384, 128], [768, 320, 128]],
+                spikes: [
+                    { x: 256, y: 590, minX: 192, maxX: 416, dir: 1, speed: 2.6 },
+                    { x: 576, y: 590, minX: 512, maxX: 736, dir: 1, speed: 2.8 }
+                ],
+                elevator: { x: 896, y: 160 }
+            },
+            34: {
+                plats: [[128, 512, 128], [832, 272, 64]],
+                falling: [[320, 464, 96], [448, 416, 96], [576, 368, 96], [704, 320, 96]],
+                spikes: [{ x: 256, y: 590, minX: 224, maxX: 384, dir: 1, speed: 2.6 }],
+                elevator: { x: 896, y: 112 }
+            },
+            35: {
+                plats: [[128, 512, 128], [832, 272, 64]],
+                vanishing: [[320, 464, 96], [448, 416, 96], [576, 368, 96], [704, 320, 96]],
+                spikes: [{ x: 256, y: 590, minX: 224, maxX: 384, dir: 1, speed: 2.6 }],
+                elevator: { x: 896, y: 112 }
+            },
+            36: {
+                plats: [[96, 544, 96], [224, 512, 96], [352, 480, 96], [480, 448, 96], [608, 416, 96], [736, 384, 96], [832, 352, 64]],
+                spikes: [{ x: 288, y: 590, minX: 160, maxX: 704, dir: 1, speed: 3.2 }],
+                elevator: { x: 896, y: 192 }
+            },
+            37: {
+                plats: [[256, 224, 192], [608, 160, 128]],
+                springs: [{ x: 352, y: 590, force: -26 }],
+                falling: [[480, 192, 96]],
+                elevator: { x: 736, y: 0 }
+            },
+            38: {
+                plats: [[224, 240, 192], [480, 192, 128], [608, 160, 128], [736, 160, 64]],
+                springs: [{ x: 288, y: 590, force: -26 }],
+                conveyors: [{ x: 160, y: 590, w: 160, dir: -1 }],
+                spikes: [{ x: 480, y: 590, minX: 448, maxX: 672, dir: 1, speed: 2.8 }],
+                elevator: { x: 800, y: 0 }
+            },
+            39: {
+                plats: [[128, 512, 128], [384, 448, 128], [256, 384, 128], [512, 320, 128], [384, 256, 128], [640, 192, 128], [768, 160, 128]],
+                spikes: [{ x: 288, y: 590, minX: 160, maxX: 608, dir: 1, speed: 3.0 }],
+                elevator: { x: 896, y: 0 }
+            },
+            40: {
+                plats: [[128, 512, 128], [256, 336, 160], [480, 288, 128], [608, 240, 128], [736, 192, 128]],
+                springs: [{ x: 352, y: 590, force: -22 }],
+                conveyors: [{ x: 480, y: 590, w: 160, dir: -1 }],
+                spikes: [
+                    { x: 224, y: 590, minX: 160, maxX: 448, dir: 1, speed: 2.8 },
+                    { x: 544, y: 590, minX: 512, maxX: 736, dir: 1, speed: 3.0 }
+                ],
+                elevator: { x: 864, y: 32 }
+            }
+        };
+
         function loadLevel(n) {
             currentLevel = n;
             holeTriggered = false;
@@ -1146,6 +1288,26 @@
                 }
             }
             
+            if (n >= 21 && EXT_LEVELS[n]) {
+                const L = EXT_LEVELS[n];
+                addPlats(L.plats.map(p => ({ x: p[0], y: p[1], w: p[2], h: 20 })), L.color);
+                (L.spikes || []).forEach(s => spikes.push(Object.assign({ w: PIXEL_SIZE, h: 18 }, s)));
+                (L.springs || []).forEach(s => springs.push(Object.assign({ w: PIXEL_SIZE, h: 18, force: -22 }, s)));
+                (L.conveyors || []).forEach(c => conveyors.push(Object.assign({ w: PIXEL_SIZE * 3, h: 18, dir: -1 }, c)));
+                (L.moving || []).forEach(m => movingPlatforms.push(Object.assign({ w: PIXEL_SIZE * 2, h: 20, dir: 1, speed: 1.5 }, m)));
+                (L.falling || []).forEach(f => {
+                    addPlats([{ x: f[0], y: f[1], w: f[2], h: 20 }], '#7a5cff');
+                    fallingPlatforms.push({ x0: Math.floor(f[0] / PIXEL_SIZE) * PIXEL_SIZE, w: f[2], y: f[1], h: 20, touchedAt: -1, fallen: false });
+                });
+                (L.vanishing || []).forEach(f => {
+                    addPlats([{ x: f[0], y: f[1], w: f[2], h: 20 }], '#0f3460');
+                    vanishingPlatforms.push({ x0: Math.floor(f[0] / PIXEL_SIZE) * PIXEL_SIZE, w: f[2], y: f[1], touchedAt: -1 });
+                });
+                if (L.ice) iceMode = true;
+                if (L.inv) controlsInverted = true;
+                if (L.grav) gravityZone = L.grav;
+            }
+            
             document.getElementById('levelLabel').textContent = 'LEVEL ' + n;
             document.getElementById('deathScreen').style.display = 'none';
             levelStartTime = performance.now();
@@ -1205,6 +1367,9 @@
             } else if (currentLevel === 20) {
                 elevator.x = 880;
                 elevator.y = 280 - PIXEL_SIZE * 5;
+            } else if (currentLevel >= 21 && EXT_LEVELS[currentLevel] && EXT_LEVELS[currentLevel].elevator) {
+                elevator.x = EXT_LEVELS[currentLevel].elevator.x;
+                elevator.y = EXT_LEVELS[currentLevel].elevator.y;
             } else {
                 elevator.x = canvas.width - PIXEL_SIZE * 3;
                 elevator.y = canvas.height - PIXEL_SIZE * 5;
@@ -1888,14 +2053,14 @@
                 const total = Object.values(levelTimes).reduce((a, b) => a + b, 0);
                 ctx.font = '22px Courier New';
                 ctx.fillStyle = '#fff';
-                const perCol = Math.ceil(TOTAL_LEVELS / 2);
+                const perCol = Math.ceil(TOTAL_LEVELS / 4);
                 for (let i = 1; i <= TOTAL_LEVELS; i++) {
                     const t = levelTimes[i];
                     if (t !== undefined) {
                         const col = Math.floor((i - 1) / perCol);
                         const row = (i - 1) % perCol;
-                        const lx = canvas.width / 2 + (col === 0 ? -110 : 110);
-                        const ly = canvas.height / 2 + 10 + row * 28;
+                        const lx = canvas.width / 2 + (col - 1.5) * 150;
+                        const ly = canvas.height / 2 + 10 + row * 22;
                         ctx.fillText('第' + i + '关: ' + t.toFixed(1) + 's', lx, ly);
                     }
                 }
